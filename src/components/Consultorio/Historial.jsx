@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase'
 import PriceBox from '../UI/PriceBox'
 import {
   Plus, FileText, CheckCircle2, Clock, Search,
-  Filter, User, Tooth
+  User, Activity, Sparkles
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -40,7 +40,6 @@ export default function Historial() {
     return matchQ && matchPac
   })
 
-  // Agrupar por paciente para el timeline
   const grouped = {}
   filtered.forEach(h => {
     const key = h.paciente_id
@@ -63,7 +62,6 @@ export default function Historial() {
         <button onClick={() => setModal(true)} className="btn-primary"><Plus className="w-4 h-4" /> Registrar Procedimiento</button>
       </div>
 
-      {/* Filtros */}
       <div className="flex gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -75,7 +73,6 @@ export default function Historial() {
         </select>
       </div>
 
-      {/* Timeline por paciente */}
       <div className="space-y-6">
         {Object.values(grouped).length === 0 && (
           <div className="text-center py-16 text-slate-400">
@@ -86,7 +83,6 @@ export default function Historial() {
 
         {Object.values(grouped).map((g, gi) => (
           <div key={gi} className="card-box space-y-4">
-            {/* Header del paciente */}
             <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
               <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center font-bold text-sm">
                 <User className="w-5 h-5" />
@@ -97,11 +93,10 @@ export default function Historial() {
               </div>
             </div>
 
-            {/* Timeline items */}
             <div className="relative pl-6 space-y-4">
               <div className="absolute left-[9px] top-2 bottom-2 w-0.5 bg-slate-200" />
 
-              {g.items.map((h, hi) => (
+              {g.items.map((h) => (
                 <div key={h.id} className="relative">
                   <div className={`absolute -left-6 top-1 w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center ${
                     h.pagado ? 'bg-emerald-500 border-emerald-300' : 'bg-amber-400 border-amber-200'
@@ -129,7 +124,7 @@ export default function Historial() {
                     <div className="flex items-center gap-3 flex-wrap">
                       {h.dientes_tratados && (
                         <span className="badge bg-violet-50 text-violet-700 border border-violet-100">
-                          <Tooth className="w-3 h-3" /> Dientes: {h.dientes_tratados}
+                          🦷 Dientes: {h.dientes_tratados}
                         </span>
                       )}
                       <span className={`badge ${h.pagado ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'}`}>
@@ -145,7 +140,6 @@ export default function Historial() {
         ))}
       </div>
 
-      {/* Modal */}
       {modal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <form onSubmit={save} className="bg-white p-6 rounded-3xl w-full max-w-md space-y-4 shadow-2xl">

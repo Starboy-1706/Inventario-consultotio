@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import PriceBox from '../UI/PriceBox'
 import QRScanner from '../UI/QRScanner'
-import { Plus, Package, AlertTriangle, QrCode, Printer, Search, RefreshCw, Layers } from 'lucide-react'
+import { Plus, AlertTriangle, QrCode, Printer, Search, RefreshCw } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function Inventario() {
@@ -38,7 +38,6 @@ export default function Inventario() {
 
   useEffect(() => { load() }, [])
 
-  // Generar código estructurado automático estilo inventario parroquial
   const generateUniqueCode = () => {
     const cat = cats.find(x => x.id === form.categoria_id)
     const prefix = cat ? cat.nombre.slice(0, 3).toUpperCase() : 'GEN'
@@ -52,6 +51,9 @@ export default function Inventario() {
 
     const payload = {
       ...form,
+      precio_venta: parseFloat(form.precio_venta) || 0,
+      stock: parseInt(form.stock) || 0,
+      stock_minimo: parseInt(form.stock_minimo) || 0,
       categoria_id: form.categoria_id || null,
       impuesto_id: form.impuesto_id || null
     }
@@ -88,13 +90,11 @@ export default function Inventario() {
         </div>
       </div>
 
-      {/* Barra de búsqueda */}
       <div className="relative">
         <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
         <input placeholder="Buscar insumo por nombre, categoría o escanea su QR..." value={q} onChange={e => setQ(e.target.value)} className="input-field pl-10" />
       </div>
 
-      {/* Tabla con códigos e impresión de etiquetas QR */}
       <div className="card-box p-0 overflow-hidden border">
         <table className="w-full text-left text-xs">
           <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase">
@@ -115,7 +115,6 @@ export default function Inventario() {
                 </td>
                 <td className="p-3.5">
                   <p className="font-bold text-slate-800">{i.nombre}</p>
-                  <span className="text-[10px] text-slate-400">UM: {i.unidad || 'Unidad'}</span>
                 </td>
                 <td className="p-3.5">
                   <span className="badge" style={{ backgroundColor: `${i.categorias?.color}15`, color: i.categorias?.color }}>
@@ -139,7 +138,6 @@ export default function Inventario() {
         </table>
       </div>
 
-      {/* Modal de Registro */}
       {modal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <form onSubmit={save} className="bg-white p-6 rounded-3xl w-full max-w-md space-y-4 shadow-2xl">
@@ -166,11 +164,20 @@ export default function Inventario() {
               </div>
             </div>
 
-            <input required placeholder="Nombre del Insumo / Material" className="input-field" value={form.nombre} />
+            <div>
+              <label className="text-xs font-semibold block mb-1">Nombre del Insumo / Material</label>
+              <input required placeholder="Ej: Resina 3M Z250" className="input-field" value={form.nombre} onChange={e => setForm({...form, nombre: e.target.value})} />
+            </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <input required type="number" placeholder="Stock Inicial" className="input-field" value={form.stock} />
-              <input required type="number" step="0.01" placeholder="Precio Venta ($ USD)" className="input-field" value={form.precio_venta} />
+              <div>
+                <label className="text-xs font-semibold block mb-1">Stock Inicial</label>
+                <input required type="number" min="0" placeholder="10" className="input-field" value={form.stock} onChange={e => setForm({...form, stock: e.target.value})} />
+              </div>
+              <div>
+                <label className="text-xs font-semibold block mb-1">Precio Venta ($ USD)</label>
+                <input required type="number" step="0.01" min="0" placeholder="25.00" className="input-field" value={form.precio_venta} onChange={e => setForm({...form, precio_venta: e.target.value})} />
+              </div>
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
@@ -181,18 +188,15 @@ export default function Inventario() {
         </div>
       )}
 
-      {/* Modal de Etiqueta QR Imprimible Estilo Original */}
       {activeLabel && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl space-y-4 text-center">
             <h3 className="font-bold text-sm text-slate-400 border-b pb-2">ETIQUETA CLÍNICA DE CONTROL</h3>
             
-            {/* Contenedor imprimible */}
             <div id="printable-area" className="p-4 border-2 border-dashed border-slate-300 rounded-2xl bg-white space-y-3 mx-auto">
               <p className="font-bold text-sm text-slate-800 uppercase tracking-tight truncate">{activeLabel.nombre}</p>
               <span className="badge bg-teal-50 text-teal-800 border border-teal-100 font-bold">{activeLabel.categorias?.nombre}</span>
               
-              {/* Código QR Generado con API pública ultra-estable */}
               <div className="w-36 h-36 bg-slate-50 border rounded-xl flex items-center justify-center mx-auto shadow-inner overflow-hidden">
                 <img 
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(activeLabel.codigo)}`} 
@@ -202,10 +206,7 @@ export default function Inventario() {
               </div>
 
               <p className="font-mono font-bold text-xs text-slate-500 tracking-widest">{activeLabel.codigo}</p>
-
-              <div className="text-center pt-2 border-t border-slate-100 text-xs font-bold space-y-0.5">
-                <p className="text-teal-700">USD: {activeLabel.precio_venta}</p>
-              </div>
+              <p className="text-teal-700 font-bold text-sm">${activeLabel.precio_venta} USD</p>
             </div>
 
             <div className="flex gap-2">
