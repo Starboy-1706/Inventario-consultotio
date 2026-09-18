@@ -3,7 +3,8 @@ import { supabase } from '../../lib/supabase'
 import { useCurrency } from '../../context/CurrencyContext'
 import { fmt } from '../../utils/helpers'
 import TicketModal from '../UI/TicketModal'
-import { ShoppingBag, Trash2, CheckCircle } from 'lucide-react'
+import QRScanner from '../UI/QRScanner'
+import { ShoppingBag, Trash2, CheckCircle, QrCode } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function POS() {
@@ -13,6 +14,7 @@ export default function POS() {
   const [cedula, setCedula] = useState('')
   const [taxId, setTaxId] = useState('')
   const [lastSale, setLastSale] = useState(null)
+  const [scanning, setScanning] = useState(false)
   const { rates, taxes } = useCurrency()
 
   const load = async () => {
@@ -27,7 +29,19 @@ export default function POS() {
       if (ex.cant >= p.stock) return toast.error('Sin stock suficiente')
       setCart(cart.map(i => i.id === p.id ? { ...i, cant: i.cant + 1 } : i))
     } else {
-      setCart([...cart, { ...p, cant: 1 }])
+      setCart([...cart, { ...p, cant: 1, taxPct: p.impuestos?.porcentaje || 0 }])
+    }
+  }
+
+  // Escanear código de barras o QR físico del insumo clínico
+  const handleQRScan = (scannedCode) => {
+    setScanning(false)
+    const foundProduct = prods.find(p => p.codigo === scannedCode)
+    if (foundProduct) {
+      addToCart(foundProduct)
+      toast.success(`${foundProduct.nombre} agregado al carrito`)
+    } else {
+      toast.error(`No se encontró ningún insumo con el código: ${scannedCode}`)
     }
   }
 
@@ -56,7 +70,6 @@ export default function POS() {
     }
 
     const { data: v, error } = await supabase.from('ventas').insert([salePayload]).select().single()
-
     if (error) return toast.error('Error al procesar venta')
 
     for (const item of cart) {
@@ -78,11 +91,14 @@ export default function POS() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Catálogo */}
+      {/* Catálogo de Insumos */}
       <div className="lg:col-span-2 space-y-4">
-        <div>
-          <h1 className="text-xl font-bold text-slate-800">Punto de Venta (Insumos Dentales)</h1>
-          <p className="text-xs text-slate-400">Seleccione materiales dentales para facturar</p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-xl font-bold text-slate-800">Venta de Insumos Odontológicos</h1>
+            <p className="text-xs text-slate-400">Escanea el QR de la etiqueta física o selecciona manualmente</p>
+          </div>
+          <button onClick={() => setScanning(true)} className="btn-secondary"><QrCode className="w-4 h-4 text-teal-600" /> Escanear Insumo</button>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -100,7 +116,7 @@ export default function POS() {
       </div>
 
       {/* Ticket / Carrito */}
-      <div className="card-pro space-y-4 h-fit border-2 border-slate-100">
+      <div className="card-pro space-y-4 h-fit border-2 border-slate-100 bg-white p-5 rounded-2xl shadow-sm">
         <h2 className="font-bold text-sm text-slate-800 flex items-center gap-2 border-b pb-3">
           <ShoppingBag className="w-4 h-4 text-teal-600" /> Resumen de Venta
         </h2>
@@ -151,6 +167,7 @@ export default function POS() {
       </div>
 
       {lastSale && <TicketModal venta={lastSale} onClose={() => setLastSale(null)} />}
+      {scanning && <QRScanner onScan={handleQRScan} onClose={() => setScanning(false)} />}
     </div>
   )
 }
