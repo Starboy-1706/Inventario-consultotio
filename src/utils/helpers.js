@@ -9,8 +9,3 @@ export const formatDate = (d) => {
   if (!d) return ''
   return new Date(d).toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' })
 }
-
-export const formatDateTime = (d) => {
-  if (!d) return ''
-  return new Date(d).toLocaleString('es-VE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-}
