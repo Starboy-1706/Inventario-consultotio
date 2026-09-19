@@ -10,6 +10,8 @@ import Pacientes from './components/Consultorio/Pacientes'
 import Citas from './components/Consultorio/Citas'
 import Historial from './components/Consultorio/Historial'
 import Tratamientos from './components/Consultorio/Tratamientos'
+import PlanesTratamiento from './components/Planes/PlanesTratamiento'
+import Doctores from './components/Doctores/Doctores'
 import POS from './components/Ventas/POS'
 import HistorialVentas from './components/Ventas/HistorialVentas'
 import Inventario from './components/Inventario/Inventario'
@@ -30,7 +32,9 @@ function RoutesWrapper() {
             <Route path="pacientes" element={<Pacientes />} />
             <Route path="citas" element={<Citas />} />
             <Route path="historial" element={<Historial />} />
+            <Route path="planes" element={<PlanesTratamiento />} />
             <Route path="tratamientos" element={<Tratamientos />} />
+            <Route path="doctores" element={<Doctores />} />
             <Route path="pos" element={<POS />} />
             <Route path="ventas" element={<HistorialVentas />} />
             <Route path="inventario" element={<Inventario />} />
