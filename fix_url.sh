@@ -1,3 +1,9 @@
+#!/bin/bash
+set -e
+
+echo "🧹 Limpiando y blindando el cliente de Supabase..."
+
+cat > src/lib/supabase.js << 'EOF'
 import { createClient } from '@supabase/supabase-js'
 
 // Función para limpiar y extraer únicamente el dominio base (ej: https://xyz.supabase.co)
@@ -80,3 +86,7 @@ export async function testSupabaseConnection() {
     }
   }
 }
+EOF
+
+npm run build
+echo "✅ Cliente Supabase auto-sanitizado y compilado exitosamente!"
