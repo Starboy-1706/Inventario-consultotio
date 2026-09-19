@@ -9,142 +9,125 @@ export function CurrencyProvider({ children }) {
   const [taxes, setTaxes] = useState([])
   const [activeCur, setActiveCur] = useState('USD') // USD | VES | COP
   const [loadingRates, setLoadingRates] = useState(false)
-  const [rateInfo, setRateInfo] = useState({
-    bcvDate: '',
-    bcvFuente: 'BCV Oficial',
-    copDate: '',
-    copFuente: 'TRM Superfinanciera',
-    modo: 'auto' // auto | manual
-  })
+  const [lastUpdate, setLastUpdate] = useState('')
 
-  // 1. OBTENER BCV OFICIAL (Válido para fin de semana / feriados)
-  const fetchBCVOfficial = async () => {
-    // Fuente 1: DolarAPI Oficial Venezuela (Tasa BCV del día/cierre)
+  // 1. Obtener tasas desde múltiples capas (Servidor Vercel -> DolarAPI -> Respaldo)
+  const fetchLiveRates = async () => {
+    // Intento 1: API Serverless en Vercel (/api/rates)
     try {
-      const res = await fetch('https://ve.dolarapi.com/v1/dolares/oficial', { cache: 'no-store' })
+      const res = await fetch('/api/rates')
       if (res.ok) {
         const data = await res.json()
-        const precio = Number(data?.promedio || data?.precio)
-        if (precio && precio > 15 && precio < 500) {
+        if (data.VES && data.COP) {
           return {
-            tasa: precio,
-            fecha: data?.fechaActualizacion || new Date().toISOString(),
-            fuente: 'BCV Oficial'
+            VES: Number(data.VES),
+            COP: Number(data.COP),
+            fecha: data.bcvDate || new Date().toISOString(),
+            fuente: 'BCV Oficial (Servidor)'
           }
         }
       }
     } catch (e) {
-      console.warn('Fallo consulta DolarAPI VE')
+      // Ignorar si estamos en local dev y la ruta /api no está montada por Vercel CLI
     }
 
-    // Fuente 2: PyDolarVe Oficial BCV
+    // Intento 2: DolarAPI Venezuela Directo
+    let ves = null
+    let cop = null
+
     try {
-      const res = await fetch('https://pydolarve.org/api/v1/dollar?page=bcv', { cache: 'no-store' })
+      const res = await fetch('https://ve.dolarapi.com/v1/dolares/oficial')
       if (res.ok) {
-        const data = await res.json()
-        const precio = Number(data?.monitors?.usd?.price)
-        if (precio && precio > 15 && precio < 500) {
-          return {
-            tasa: precio,
-            fecha: data?.datetime?.date || new Date().toISOString(),
-            fuente: 'BCV Oficial'
-          }
-        }
+        const d = await res.json()
+        const p = Number(d.promedio || d.precio)
+        if (p > 10 && p < 1000) ves = p
       }
-    } catch (e) {
-      console.warn('Fallo consulta PyDolarVe')
+    } catch (e) {}
+
+    // Intento 3: PyDolarVe Directo
+    if (!ves) {
+      try {
+        const res = await fetch('https://pydolarve.org/api/v1/dollar?page=bcv')
+        if (res.ok) {
+          const d = await res.json()
+          const p = Number(d?.monitors?.usd?.price)
+          if (p > 10 && p < 1000) ves = p
+        }
+      } catch (e) {}
     }
 
-    return null
-  }
-
-  // 2. OBTENER TRM OFICIAL COLOMBIA (Datos Abiertos / Superfinanciera)
-  const fetchCOPOfficial = async () => {
-    // Fuente 1: Portal Oficial de Datos Abiertos del Gobierno de Colombia (Superfinanciera)
+    // TRM Colombia Directo
     try {
-      const res = await fetch('https://www.datos.gov.co/resource/32sa-8pi3.json?$limit=1&$order=vigenciadesde%20DESC', { cache: 'no-store' })
+      const res = await fetch('https://co.dolarapi.com/v1/dolares/oficial')
       if (res.ok) {
-        const data = await res.json()
-        if (data && data[0]?.valor) {
-          return {
-            tasa: Number(data[0].valor),
-            fecha: data[0].vigenciadesde || data[0].vigenciahasta,
-            fuente: 'TRM Superfinanciera Oficial'
-          }
-        }
+        const d = await res.json()
+        const p = Number(d.promedio || d.precio)
+        if (p > 2000 && p < 10000) cop = p
       }
-    } catch (e) {
-      console.warn('Fallo consulta Datos Abiertos Colombia')
+    } catch (e) {}
+
+    if (!cop) {
+      try {
+        const res = await fetch('https://open.er-api.com/v6/latest/USD')
+        if (res.ok) {
+          const d = await res.json()
+          if (d?.rates?.COP) cop = Number(d.rates.COP)
+        }
+      } catch (e) {}
     }
 
-    // Fuente 2: DolarAPI Oficial Colombia
-    try {
-      const res = await fetch('https://co.dolarapi.com/v1/dolares/oficial', { cache: 'no-store' })
-      if (res.ok) {
-        const data = await res.json()
-        const precio = Number(data?.promedio || data?.precio)
-        if (precio && precio > 2000 && precio < 10000) {
-          return {
-            tasa: precio,
-            fecha: data?.fechaActualizacion || new Date().toISOString(),
-            fuente: 'TRM Oficial Colombia'
-          }
-        }
+    if (ves || cop) {
+      return {
+        VES: ves,
+        COP: cop,
+        fecha: new Date().toISOString(),
+        fuente: 'BCV Oficial Directo'
       }
-    } catch (e) {
-      console.warn('Fallo consulta DolarAPI CO')
     }
 
     return null
   }
 
-  // 3. SINCRONIZACIÓN INTELIGENTE (No pisa tasas manuales)
-  const syncOfficialRates = useCallback(async (notify = false, force = false) => {
+  // 2. Sincronizar y guardar en Supabase
+  const syncOfficialRates = useCallback(async (notify = false) => {
     setLoadingRates(true)
     try {
-      const [bcvRes, copRes] = await Promise.all([fetchBCVOfficial(), fetchCOPOfficial()])
+      const result = await fetchLiveRates()
       const updates = {}
-      const infoUpdates = {}
 
-      if (bcvRes && bcvRes.tasa) {
-        updates.VES = bcvRes.tasa
-        infoUpdates.bcvDate = bcvRes.fecha
-        infoUpdates.bcvFuente = bcvRes.fuente
-        await supabase.from('tasas_cambio').upsert({
-          moneda: 'VES',
-          tasa: bcvRes.tasa,
-          fuente: `${bcvRes.fuente} (${new Date().toLocaleDateString('es-VE')})`
-        }, { onConflict: 'moneda' })
+      if (result?.VES) {
+        updates.VES = result.VES
+        await supabase.from('tasas_cambio').upsert(
+          { moneda: 'VES', tasa: result.VES, fuente: 'BCV Oficial' },
+          { onConflict: 'moneda' }
+        )
       }
 
-      if (copRes && copRes.tasa) {
-        updates.COP = copRes.tasa
-        infoUpdates.copDate = copRes.fecha
-        infoUpdates.copFuente = copRes.fuente
-        await supabase.from('tasas_cambio').upsert({
-          moneda: 'COP',
-          tasa: copRes.tasa,
-          fuente: `${copRes.fuente} (${new Date().toLocaleDateString('es-CO')})`
-        }, { onConflict: 'moneda' })
+      if (result?.COP) {
+        updates.COP = result.COP
+        await supabase.from('tasas_cambio').upsert(
+          { moneda: 'COP', tasa: result.COP, fuente: 'TRM Colombia' },
+          { onConflict: 'moneda' }
+        )
       }
 
       if (Object.keys(updates).length > 0) {
         setRates(prev => ({ ...prev, ...updates }))
-        setRateInfo(prev => ({ ...prev, ...infoUpdates, modo: 'auto' }))
+        setLastUpdate(new Date().toLocaleTimeString('es-VE'))
         if (notify) {
-          toast.success(`Tasas Oficiales Sincronizadas:\n• BCV: Bs. ${updates.VES || rates.VES}\n• TRM COP: $${updates.COP || rates.COP}`)
+          toast.success(`Tasas Oficiales Actualizadas:\n• BCV: Bs. ${updates.VES || rates.VES}\n• COP: $${updates.COP || rates.COP}`)
         }
       } else {
-        if (notify) toast('Tasas de cierre bancario vigentes confirmadas')
+        if (notify) toast('Tasas oficiales vigentes verificadas')
       }
     } catch (e) {
-      if (notify) toast.error('Error al sincronizar con fuentes bancarias')
+      if (notify) toast.error('Error sincronizando tasas oficiales')
     } finally {
       setLoadingRates(false)
     }
   }, [rates])
 
-  // Cargar tasas iniciales de Supabase
+  // 3. Cargar datos iniciales
   const loadData = useCallback(async () => {
     try {
       const [tRes, iRes] = await Promise.all([
@@ -153,25 +136,17 @@ export function CurrencyProvider({ children }) {
       ])
 
       const r = {}
-      const info = {}
       if (tRes.data?.length > 0) {
         tRes.data.forEach(t => {
-          if (t.moneda === 'VES') {
-            r.VES = Number(t.tasa)
-            info.bcvFuente = t.fuente || 'BCV Oficial'
-          }
-          if (t.moneda === 'COP') {
-            r.COP = Number(t.tasa)
-            info.copFuente = t.fuente || 'TRM Colombia'
-          }
+          if (t.moneda === 'VES') r.VES = Number(t.tasa)
+          if (t.moneda === 'COP') r.COP = Number(t.tasa)
         })
         setRates(prev => ({ ...prev, ...r }))
-        setRateInfo(prev => ({ ...prev, ...info }))
       }
 
       if (iRes.data) setTaxes(iRes.data)
 
-      // Actualizar automáticamente en segundo plano
+      // Consultar tasas oficiales de hoy en segundo plano
       syncOfficialRates(false)
     } catch (e) {
       console.error('Error cargando tasas:', e)
@@ -189,10 +164,9 @@ export function CurrencyProvider({ children }) {
       taxes,
       activeCur,
       setActiveCur,
-      rateInfo,
-      setRateInfo,
       syncOfficialRates,
       loadingRates,
+      lastUpdate,
       loadData
     }}>
       {children}
