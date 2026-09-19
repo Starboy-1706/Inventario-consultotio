@@ -65,7 +65,6 @@ export default function Historial() {
             </div>
           </div>
 
-          {/* ODONTOGRAMA SELECCIONABLE */}
           <Odontograma selected={dientesSel} onChange={setDientesSel} />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

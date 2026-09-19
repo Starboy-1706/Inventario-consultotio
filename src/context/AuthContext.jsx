@@ -1,7 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-
 const AuthContext = createContext()
-
 export function AuthProvider({ children }) {
   const [auth, setAuth] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -27,11 +25,6 @@ export function AuthProvider({ children }) {
     setAuth(false)
   }
 
-  return (
-    <AuthContext.Provider value={{ auth, loading, login, logout }}>
-      {children}
-    </AuthContext.Provider>
-  )
+  return <AuthContext.Provider value={{ auth, loading, login, logout }}>{children}</AuthContext.Provider>
 }
-
 export const useAuth = () => useContext(AuthContext)

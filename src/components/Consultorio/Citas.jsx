@@ -88,14 +88,12 @@ export default function Citas() {
         </form>
       )}
 
-      {/* Selector de Fecha */}
       <div className="card-box p-3 flex items-center justify-between">
         <span className="text-xs font-bold text-slate-500">Filtrar por Día:</span>
         <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} className="input-field w-auto font-bold" />
         <button onClick={() => setFecha(hoy)} className="btn-secondary text-xs">Hoy</button>
       </div>
 
-      {/* Lista de citas del día */}
       <div className="space-y-2">
         {citasDia.length === 0 ? (
           <div className="card-box text-center py-10 text-slate-400"><CalIcon className="w-8 h-8 mx-auto mb-2 opacity-30" /><p className="text-sm">Sin citas para este día</p></div>

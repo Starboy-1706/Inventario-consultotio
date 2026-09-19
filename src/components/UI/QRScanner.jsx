@@ -9,14 +9,12 @@ export default function QRScanner({ onScan, onClose }) {
       { fps: 15, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 },
       false
     )
-
     scanner.render(
       (text) => {
         scanner.clear().then(() => onScan(text)).catch(() => onScan(text))
       },
       () => {}
     )
-
     return () => {
       scanner.clear().catch(() => {})
     }

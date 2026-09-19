@@ -88,7 +88,6 @@ export default function POS() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Catálogo */}
       <div className="lg:col-span-2 space-y-4">
         <div className="flex justify-between items-center flex-wrap gap-2">
           <div>
@@ -112,7 +111,6 @@ export default function POS() {
         </div>
       </div>
 
-      {/* Carrito */}
       <div className="card-box space-y-4 h-fit border-2 border-slate-100">
         <h2 className="font-bold text-sm text-slate-800 flex items-center gap-2 border-b pb-3">
           <ShoppingBag className="w-4 h-4 text-teal-600" /> Carrito de Venta
@@ -142,7 +140,6 @@ export default function POS() {
           {cart.length === 0 && <p className="text-center py-6 text-xs text-slate-300">Carrito vacío</p>}
         </div>
 
-        {/* Totales */}
         <div className="border-t border-slate-100 pt-3 space-y-1.5 text-xs">
           <div className="flex justify-between text-slate-500"><span>Subtotal:</span><span>{fmt(subtotalUSD, 'USD')}</span></div>
           {taxPct > 0 && <div className="flex justify-between text-teal-700"><span>Impuesto ({taxPct}%):</span><span>{fmt(taxUSD, 'USD')}</span></div>}
@@ -161,7 +158,6 @@ export default function POS() {
           <CheckCircle className="w-4 h-4" /> Procesar Venta
         </button>
 
-        {/* Ticket Recibo Inline si se emitió venta */}
         {lastSale && (
           <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl text-center space-y-2 text-xs">
             <p className="font-bold text-teal-900">✓ Venta {lastSale.factura} Registrada</p>
