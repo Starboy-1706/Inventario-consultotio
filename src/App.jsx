@@ -5,6 +5,7 @@ import { CurrencyProvider } from './context/CurrencyContext'
 import Login from './components/Auth/Login'
 import Shell from './components/Layout/Shell'
 import Dashboard from './components/Dashboard/Dashboard'
+import Reportes from './components/Reportes/Reportes'
 import Pacientes from './components/Consultorio/Pacientes'
 import Citas from './components/Consultorio/Citas'
 import Historial from './components/Consultorio/Historial'
@@ -25,6 +26,7 @@ function RoutesWrapper() {
         <Routes>
           <Route path="/" element={<Shell />}>
             <Route index element={<Dashboard />} />
+            <Route path="reportes" element={<Reportes />} />
             <Route path="pacientes" element={<Pacientes />} />
             <Route path="citas" element={<Citas />} />
             <Route path="historial" element={<Historial />} />
