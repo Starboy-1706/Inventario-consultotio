@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useCurrency } from '../../context/CurrencyContext'
+import { msgRecordatorioCita, openWhatsApp, makePhoneCall } from '../../utils/comunicaciones'
 import {
   Plus, Check, X, Clock, Calendar as CalIcon, User,
-  ChevronLeft, ChevronRight, Save, LayoutGrid, List
+  ChevronLeft, ChevronRight, Save, LayoutGrid, List, MessageCircle, Phone
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -20,19 +22,22 @@ export default function Citas() {
   const [citas, setCitas] = useState([])
   const [pacs, setPacs] = useState([])
   const [trats, setTrats] = useState([])
+  const [clinica, setClinica] = useState(null)
   const [showForm, setShowForm] = useState(false)
-  const [vista, setVista] = useState('horas') // horas | lista
+  const [vista, setVista] = useState('horas')
   const [filtro, setFiltro] = useState('todas')
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0])
   const [form, setForm] = useState({ paciente_id: '', tratamiento_id: '', fecha: '', duracion_min: 30, notas: '' })
 
   const load = async () => {
-    const [c, p, t] = await Promise.all([
-      supabase.from('citas').select('*, pacientes(nombres, apellidos, telefono), tratamientos(nombre, precio, duracion_min)').order('fecha'),
+    const [c, p, t, cl] = await Promise.all([
+      supabase.from('citas').select('*, pacientes(nombres, apellidos, telefono, email), tratamientos(nombre, precio, duracion_min)').order('fecha'),
       supabase.from('pacientes').select('id, nombres, apellidos, cedula').eq('activo', true).order('nombres'),
-      supabase.from('tratamientos').select('id, nombre, precio, duracion_min').eq('activo', true).order('nombre')
+      supabase.from('tratamientos').select('id, nombre, precio, duracion_min').eq('activo', true).order('nombre'),
+      supabase.from('configuracion_consultorio').select('*').limit(1)
     ])
     setCitas(c.data || []); setPacs(p.data || []); setTrats(t.data || [])
+    if (cl.data?.[0]) setClinica(cl.data[0])
   }
   useEffect(() => { load() }, [])
 
@@ -49,30 +54,24 @@ export default function Citas() {
     load()
   }
 
+  const sendWhatsAppReminder = (cita) => {
+    if (!cita.pacientes?.telefono) return toast.error('El paciente no tiene teléfono')
+    const msg = msgRecordatorioCita({ paciente: cita.pacientes, cita, clinica })
+    openWhatsApp(cita.pacientes.telefono, msg)
+  }
+
   const hoy = new Date().toISOString().split('T')[0]
   const citasDia = citas.filter(c => {
     const f = c.fecha?.split('T')[0]
     return f === fecha && (filtro === 'todas' || c.estado === filtro)
   })
 
-  // Agendar haciendo clic directo en un bloque de hora
-  const agendarEnHora = (hStr) => {
-    setForm({
-      paciente_id: '',
-      tratamiento_id: '',
-      fecha: `${fecha}T${hStr}`,
-      duracion_min: 30,
-      notas: ''
-    })
-    setShowForm(true)
-  }
-
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-bold text-slate-800">Agenda Médica & Horarios</h1>
-          <p className="text-xs text-slate-400">Programación de citas y control de horas en sillón</p>
+          <p className="text-xs text-slate-400">Control de citas con recordatorio WhatsApp directo</p>
         </div>
         <div className="flex gap-2">
           <div className="bg-white p-0.5 rounded-xl border border-slate-200 flex gap-0.5">
@@ -89,7 +88,6 @@ export default function Citas() {
         </div>
       </div>
 
-      {/* Formulario Inline */}
       {showForm && (
         <form onSubmit={save} className="card-box space-y-3 border-2 border-teal-200 bg-teal-50/20">
           <h3 className="font-bold text-sm text-teal-800">Agendar Nueva Cita</h3>
@@ -129,13 +127,12 @@ export default function Citas() {
         <button onClick={() => setFecha(hoy)} className="btn-secondary text-xs py-1">Ir a Hoy</button>
       </div>
 
-      {/* VISTA 1: BLOQUES DE HORARIO (SLOTS) */}
+      {/* Vista de Horarios con botón WhatsApp */}
       {vista === 'horas' && (
         <div className="card-box p-4 space-y-2">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Bloques de Horarios del Día</h3>
           <div className="divide-y divide-slate-100">
             {horasJornada.map(hora => {
-              const citaEnHora = citasDia.find(c => {
+              const cita = citasDia.find(c => {
                 const hCita = new Date(c.fecha).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: false })
                 return hCita.startsWith(hora.split(':')[0])
               })
@@ -144,28 +141,35 @@ export default function Citas() {
                 <div key={hora} className="py-2.5 flex items-center justify-between gap-3 text-xs">
                   <div className="w-16 font-mono font-bold text-slate-500">{hora}</div>
 
-                  {citaEnHora ? (
-                    <div className="flex-1 p-2.5 bg-teal-50/80 border border-teal-200 rounded-xl flex items-center justify-between">
+                  {cita ? (
+                    <div className="flex-1 p-2.5 bg-teal-50/80 border border-teal-200 rounded-xl flex items-center justify-between flex-wrap gap-2">
                       <div>
-                        <p className="font-bold text-slate-800">{citaEnHora.pacientes?.nombres} {citaEnHora.pacientes?.apellidos}</p>
-                        <p className="text-[11px] text-teal-700">{citaEnHora.tratamientos?.nombre || 'Consulta General'}</p>
+                        <p className="font-bold text-slate-800">{cita.pacientes?.nombres} {cita.pacientes?.apellidos}</p>
+                        <p className="text-[11px] text-teal-700">{cita.tratamientos?.nombre || 'Consulta General'}</p>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className={`badge ${estados[citaEnHora.estado]?.bg} ${estados[citaEnHora.estado]?.text}`}>
-                          {estados[citaEnHora.estado]?.label}
+                        <button
+                          onClick={() => sendWhatsAppReminder(cita)}
+                          title="Enviar Recordatorio por WhatsApp"
+                          className="p-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-lg flex items-center gap-1 font-bold text-[11px]"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5 text-emerald-600" /> WhatsApp
+                        </button>
+                        <span className={`badge ${estados[cita.estado]?.bg} ${estados[cita.estado]?.text}`}>
+                          {estados[cita.estado]?.label}
                         </span>
-                        {citaEnHora.estado === 'programada' && (
-                          <button onClick={() => setStatus(citaEnHora.id, 'confirmada')} className="p-1 text-teal-600 hover:bg-teal-100 rounded">
+                        {cita.estado === 'programada' && (
+                          <button onClick={() => setStatus(cita.id, 'confirmada')} className="p-1 text-teal-600 hover:bg-teal-100 rounded">
                             <Check className="w-3.5 h-3.5" />
                           </button>
                         )}
                       </div>
                     </div>
                   ) : (
-                    <div className="flex-1 p-2 border border-dashed border-slate-200 rounded-xl flex items-center justify-between text-slate-400 hover:border-teal-300 transition-all">
-                      <span className="italic text-[11px]">Hora disponible</span>
-                      <button onClick={() => agendarEnHora(hora)} className="text-[11px] font-bold text-teal-600 hover:underline">
-                        + Agendar aquí
+                    <div className="flex-1 p-2 border border-dashed border-slate-200 rounded-xl flex items-center justify-between text-slate-400">
+                      <span className="italic text-[11px]">Disponible</span>
+                      <button onClick={() => { setForm({ paciente_id: '', tratamiento_id: '', fecha: `${fecha}T${hora}`, duracion_min: 30, notas: '' }); setShowForm(true) }} className="text-[11px] font-bold text-teal-600 hover:underline">
+                        + Agendar
                       </button>
                     </div>
                   )}
@@ -176,38 +180,25 @@ export default function Citas() {
         </div>
       )}
 
-      {/* VISTA 2: LISTA DE CITAS */}
+      {/* Vista Lista */}
       {vista === 'lista' && (
         <div className="space-y-2">
-          {citasDia.length === 0 ? (
-            <div className="card-box text-center py-10 text-slate-400"><CalIcon className="w-8 h-8 mx-auto mb-2 opacity-30" /><p className="text-sm">Sin citas este día</p></div>
-          ) : citasDia.map(c => {
-            const est = estados[c.estado] || estados.programada
-            const hora = new Date(c.fecha).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })
-            return (
-              <div key={c.id} className={`card-box p-4 border-l-4 ${est.color}`}>
-                <div className="flex items-center justify-between flex-wrap gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="text-center w-14"><p className="text-lg font-bold text-slate-800">{hora}</p><p className="text-[10px] text-slate-400">{c.duracion_min}m</p></div>
-                    <div>
-                      <h3 className="font-bold text-sm text-slate-800">{c.pacientes?.nombres} {c.pacientes?.apellidos}</h3>
-                      <p className="text-xs text-teal-700 font-semibold">{c.tratamientos?.nombre || 'Consulta General'}</p>
-                      {c.notas && <p className="text-[11px] text-slate-400 italic mt-0.5">"{c.notas}"</p>}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className={`badge ${est.bg} ${est.text}`}>{est.label}</span>
-                    {c.estado === 'programada' && (
-                      <button onClick={() => setStatus(c.id, 'confirmada')} className="p-1.5 bg-teal-50 text-teal-600 rounded-lg"><Check className="w-4 h-4" /></button>
-                    )}
-                    {c.estado === 'confirmada' && (
-                      <button onClick={() => setStatus(c.id, 'completada')} className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg"><Check className="w-4 h-4" /></button>
-                    )}
-                  </div>
+          {citasDia.map(c => (
+            <div key={c.id} className={`card-box p-4 border-l-4 ${estados[c.estado]?.color}`}>
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div>
+                  <h3 className="font-bold text-sm text-slate-800">{c.pacientes?.nombres} {c.pacientes?.apellidos}</h3>
+                  <p className="text-xs text-teal-700">{c.tratamientos?.nombre || 'Consulta General'} • {new Date(c.fecha).toLocaleTimeString('es-VE')}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => sendWhatsAppReminder(c)} className="btn-secondary text-xs py-1 px-2.5 text-emerald-700 bg-emerald-50">
+                    <MessageCircle className="w-3.5 h-3.5 text-emerald-600" /> Recordar WhatsApp
+                  </button>
+                  <span className={`badge ${estados[c.estado]?.bg} ${estados[c.estado]?.text}`}>{estados[c.estado]?.label}</span>
                 </div>
               </div>
-            )
-          })}
+            </div>
+          ))}
         </div>
       )}
     </div>

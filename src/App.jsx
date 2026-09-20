@@ -7,6 +7,7 @@ import Shell from './components/Layout/Shell'
 import Dashboard from './components/Dashboard/Dashboard'
 import Reportes from './components/Reportes/Reportes'
 import CajaChica from './components/CajaChica/CajaChica'
+import CentroComunicacion from './components/Comunicacion/CentroComunicacion'
 import Pacientes from './components/Consultorio/Pacientes'
 import Citas from './components/Consultorio/Citas'
 import Historial from './components/Consultorio/Historial'
@@ -14,7 +15,6 @@ import Tratamientos from './components/Consultorio/Tratamientos'
 import PlanesTratamiento from './components/Planes/PlanesTratamiento'
 import Doctores from './components/Doctores/Doctores'
 import Laboratorio from './components/Laboratorio/Laboratorio'
-import PortalPaciente from './components/Portal/PortalPaciente'
 import POS from './components/Ventas/POS'
 import HistorialVentas from './components/Ventas/HistorialVentas'
 import Inventario from './components/Inventario/Inventario'
@@ -32,6 +32,7 @@ function RoutesWrapper() {
             <Route index element={<Dashboard />} />
             <Route path="reportes" element={<Reportes />} />
             <Route path="caja" element={<CajaChica />} />
+            <Route path="comunicacion" element={<CentroComunicacion />} />
             <Route path="pacientes" element={<Pacientes />} />
             <Route path="citas" element={<Citas />} />
             <Route path="historial" element={<Historial />} />
@@ -39,7 +40,6 @@ function RoutesWrapper() {
             <Route path="tratamientos" element={<Tratamientos />} />
             <Route path="doctores" element={<Doctores />} />
             <Route path="laboratorio" element={<Laboratorio />} />
-            <Route path="portal" element={<PortalPaciente />} />
             <Route path="pos" element={<POS />} />
             <Route path="ventas" element={<HistorialVentas />} />
             <Route path="inventario" element={<Inventario />} />

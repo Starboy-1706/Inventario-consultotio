@@ -5,8 +5,7 @@ import { useCurrency } from '../../context/CurrencyContext'
 import {
   Users, Calendar, FileText, Activity, ShoppingBag, Package,
   Settings, LogOut, RefreshCw, LayoutDashboard, Receipt, BarChart3,
-  CreditCard, UserCheck, Menu, X, Wallet, FlaskConical, Smartphone,
-  MessageCircle, Camera
+  CreditCard, UserCheck, Menu, X, Wallet, FlaskConical, MessageSquare
 } from 'lucide-react'
 
 export default function Shell() {
@@ -33,27 +32,23 @@ export default function Shell() {
           </div>
           <nav className="space-y-0.5">
             <NavLink to="/" onClick={close} className={nav}><LayoutDashboard className="w-4 h-4" /> Panel</NavLink>
-            <NavLink to="/reportes" onClick={close} className={nav}><BarChart3 className="w-4 h-4" /> Reportes</NavLink>
-            <NavLink to="/caja" onClick={close} className={nav}><Wallet className="w-4 h-4" /> Caja & Gastos</NavLink>
+            <NavLink to="/reportes" onClick={close} className={nav}><BarChart3 className="w-4 h-4" /> Reportes & Finanzas</NavLink>
+            <NavLink to="/caja" onClick={close} className={nav}><Wallet className="w-4 h-4" /> Caja Chica & Cierre</NavLink>
+            <NavLink to="/comunicacion" onClick={close} className={nav}><MessageSquare className="w-4 h-4 text-emerald-600" /> WhatsApp & Contacto</NavLink>
 
             <p className="text-[10px] uppercase font-bold text-slate-400 px-3 pt-3 py-1">Consultorio</p>
-            <NavLink to="/pacientes" onClick={close} className={nav}><Users className="w-4 h-4" /> Pacientes</NavLink>
-            <NavLink to="/citas" onClick={close} className={nav}><Calendar className="w-4 h-4" /> Agenda</NavLink>
+            <NavLink to="/pacientes" onClick={close} className={nav}><Users className="w-4 h-4" /> Pacientes 360°</NavLink>
+            <NavLink to="/citas" onClick={close} className={nav}><Calendar className="w-4 h-4" /> Agenda & Horarios</NavLink>
             <NavLink to="/historial" onClick={close} className={nav}><FileText className="w-4 h-4" /> Historial & Cobros</NavLink>
             <NavLink to="/planes" onClick={close} className={nav}><CreditCard className="w-4 h-4" /> Planes & Cuotas</NavLink>
             <NavLink to="/tratamientos" onClick={close} className={nav}><Activity className="w-4 h-4" /> Tratamientos</NavLink>
             <NavLink to="/doctores" onClick={close} className={nav}><UserCheck className="w-4 h-4" /> Doctores</NavLink>
-            <NavLink to="/laboratorio" onClick={close} className={nav}><FlaskConical className="w-4 h-4" /> Laboratorio</NavLink>
+            <NavLink to="/laboratorio" onClick={close} className={nav}><FlaskConical className="w-4 h-4" /> Laboratorio Dental</NavLink>
 
             <p className="text-[10px] uppercase font-bold text-slate-400 px-3 pt-3 py-1">Insumos & Ventas</p>
-            <NavLink to="/pos" onClick={close} className={nav}><ShoppingBag className="w-4 h-4" /> POS</NavLink>
-            <NavLink to="/ventas" onClick={close} className={nav}><Receipt className="w-4 h-4" /> Ventas</NavLink>
-            <NavLink to="/inventario" onClick={close} className={nav}><Package className="w-4 h-4" /> Almacén</NavLink>
-
-            <p className="text-[10px] uppercase font-bold text-slate-400 px-3 pt-3 py-1">Comunicación</p>
-            <NavLink to="/portal" onClick={close} className={nav}><Smartphone className="w-4 h-4" /> Portal Paciente</NavLink>
-
-            <p className="text-[10px] uppercase font-bold text-slate-400 px-3 pt-3 py-1">Config</p>
+            <NavLink to="/pos" onClick={close} className={nav}><ShoppingBag className="w-4 h-4" /> Punto de Venta (POS)</NavLink>
+            <NavLink to="/ventas" onClick={close} className={nav}><Receipt className="w-4 h-4" /> Historial de Ventas</NavLink>
+            <NavLink to="/inventario" onClick={close} className={nav}><Package className="w-4 h-4" /> Almacén & Kardex</NavLink>
             <NavLink to="/config" onClick={close} className={nav}><Settings className="w-4 h-4" /> Membrete & Tasas</NavLink>
           </nav>
         </div>
