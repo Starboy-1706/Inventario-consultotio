@@ -18,7 +18,7 @@ export default function Shell() {
   const close = () => setMob(false)
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-slate-50">
+    <div className="min-h-screen md:h-screen flex flex-col md:flex-row bg-slate-50 md:overflow-hidden">
       <div className="md:hidden bg-white border-b px-4 py-3 flex justify-between items-center z-50">
         <span className="font-bold text-sm">🦷 OdontoCare Pro</span>
         <button onClick={() => setMob(!mob)} className="p-1.5">{mob ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}</button>
