@@ -1,28 +1,30 @@
 import React, { useState } from 'react'
-import { Printer, X, MessageCircle, FileText, Receipt, CheckCircle } from 'lucide-react'
+import { Printer, X, MessageCircle, FileText, Receipt } from 'lucide-react'
 
 export default function ReciboModal({ isOpen, onClose, data, consultorio }) {
-  const [formato, setFormato] = useState('carta')
+  const [formato, setFormato] = useState('factura')
 
   if (!isOpen || !data) return null
 
   const config = consultorio || {
-    nombre: 'Consultorio Dental & Médico',
+    nombre: 'CONSULTORIO ODONTOLÓGICO INTEGRAL, C.A.',
     rif_nit: 'J-12345678-0',
-    telefono: '+58 412 000 0000',
-    direccion: 'Av. Principal, Centro Profesional, Piso 2',
-    email: 'contacto@consultorio.com',
-    mensaje_recibo: 'Gracias por su confianza. ¡Cuidamos de su salud!'
+    telefono: '+58 412-000-00-00',
+    direccion: 'Av. Bolívar, Torre Médica Profesional, Piso 3, Of. 3-A, Caracas, Dtto. Capital',
+    email: 'admin@consultorio.com',
+    mensaje_recibo: 'Este documento es un comprobante de pago válido según las disposiciones del SENIAT.',
+    contribuyente: 'CONTRIBUYENTE FORMAL'
   }
 
   const {
     id,
-    fecha = new Date().toLocaleDateString('es-ES'),
+    fecha = new Date().toLocaleDateString('es-VE'),
     paciente_nombre = 'Paciente General',
-    paciente_cedula = 'N/A',
+    paciente_cedula = 'V-00000000',
     paciente_telefono = '',
+    paciente_direccion = '',
     doctor_nombre = 'Dr. Tratante',
-    procedimiento = 'Consulta Médica General',
+    procedimiento = 'Consulta Odontológica General',
     diagnostico = '',
     dientes_tratados = '',
     metodo_pago = 'Efectivo',
@@ -33,206 +35,325 @@ export default function ReciboModal({ isOpen, onClose, data, consultorio }) {
     total_cop = 0,
     tasa_ves = 0,
     tasa_cop = 0,
-    factura = id ? `REC-${String(id).slice(0, 8).toUpperCase()}` : 'REC-00001'
+    factura = id ? `00${String(id).slice(0, 6).toUpperCase()}` : '000001',
+    numero_control = id ? `00-${String(id).slice(0, 8).toUpperCase()}` : '00-00000001'
   } = data
 
-  // GENERADOR DE IMPRESIÓN DIRECTA E INDEPENDIENTE
+  // Cálculos fiscales SENIAT
+  const baseImponible = Number(subtotal_usd || monto_usd)
+  const iva = impuesto_usd > 0 ? Number(impuesto_usd) : baseImponible * 0.16
+  const exento = 0
+  const totalFactura = baseImponible + iva
+  const totalBs = total_ves > 0 ? Number(total_ves) : totalFactura * Number(tasa_ves || 1)
+
+  // Convertir número a letras
+  const numeroALetras = (num) => {
+    const unidades = ['','UNO','DOS','TRES','CUATRO','CINCO','SEIS','SIETE','OCHO','NUEVE']
+    const decenas = ['','DIEZ','VEINTE','TREINTA','CUARENTA','CINCUENTA','SESENTA','SETENTA','OCHENTA','NOVENTA']
+    const centenas = ['','CIEN','DOSCIENTOS','TRESCIENTOS','CUATROCIENTOS','QUINIENTOS','SEISCIENTOS','SETECIENTOS','OCHOCIENTOS','NOVECIENTOS']
+    const n = Math.floor(num)
+    if (n === 0) return 'CERO'
+    if (n < 10) return unidades[n]
+    if (n < 20) return 'DIECI' + unidades[n - 10]
+    if (n < 100) return decenas[Math.floor(n / 10)] + (n % 10 > 0 ? ' Y ' + unidades[n % 10] : '')
+    if (n < 1000) return centenas[Math.floor(n / 100)] + (n % 100 > 0 ? ' ' + numeroALetras(n % 100) : '')
+    return num.toFixed(2).toString()
+  }
+
+  const montoLetras = `${numeroALetras(Math.floor(totalFactura))} DÓLARES CON ${String(Math.round((totalFactura % 1) * 100)).padStart(2, '0')}/100`
+
   const handlePrint = () => {
-    const printWindow = window.open('', '_blank', 'width=850,height=900')
+    const printWindow = window.open('', '_blank', 'width=900,height=1000')
     if (!printWindow) {
-      alert('Por favor permite las ventanas emergentes (pop-ups) para imprimir el recibo.')
+      alert('Permite las ventanas emergentes para imprimir.')
       return
     }
 
-    const htmlContent = `
+    const html = `
       <!DOCTYPE html>
       <html lang="es">
       <head>
         <meta charset="UTF-8">
-        <title>Recibo #${factura}</title>
+        <title>Factura #${factura}</title>
         <style>
           * { box-sizing: border-box; margin: 0; padding: 0; }
           body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            color: #1f2937;
-            background: #ffffff;
+            font-family: "Arial", "Helvetica", sans-serif;
+            color: #000;
+            background: #fff;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
 
           ${formato === 'ticket' ? `
-            /* ESTILOS TICKET 80MM */
             @page { size: 80mm auto; margin: 0; }
-            body { width: 72mm; margin: 0 auto; padding: 10px 4px; font-family: monospace; font-size: 11px; }
-            .ticket-header { text-align: center; border-bottom: 1px dashed #9ca3af; padding-bottom: 8px; margin-bottom: 8px; }
-            .ticket-title { font-size: 13px; font-weight: bold; text-transform: uppercase; }
-            .ticket-row { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 11px; }
-            .ticket-total { font-size: 14px; font-weight: bold; border-top: 1px dashed #9ca3af; border-bottom: 1px dashed #9ca3af; padding: 6px 0; margin: 8px 0; }
-            .ticket-footer { text-align: center; font-size: 10px; color: #4b5563; margin-top: 12px; }
+            body { width: 72mm; margin: 0 auto; padding: 8px 3px; font-size: 10px; font-family: monospace; }
+            .sep { border-top: 1px dashed #000; margin: 4px 0; }
+            .row { display: flex; justify-content: space-between; }
+            .center { text-align: center; }
+            .bold { font-weight: bold; }
+            .small { font-size: 9px; }
+            .title { font-size: 12px; font-weight: bold; text-transform: uppercase; }
           ` : `
-            /* ESTILOS CARTA / A4 */
-            @page { size: letter portrait; margin: 15mm; }
-            body { max-width: 800px; margin: 0 auto; padding: 20px; font-size: 13px; }
-            .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #2563eb; padding-bottom: 16px; margin-bottom: 20px; }
-            .clinic-name { font-size: 20px; font-weight: bold; color: #111827; }
-            .doc-tag { background: #eff6ff; color: #1d4ed8; font-weight: bold; font-size: 11px; text-transform: uppercase; padding: 4px 10px; border-radius: 9999px; border: 1px solid #bfdbfe; display: inline-block; margin-bottom: 6px; }
-            .info-box { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px; margin-bottom: 20px; }
-            .info-title { font-size: 10px; font-weight: bold; text-transform: uppercase; color: #6b7280; margin-bottom: 2px; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
-            th { background: #f3f4f6; color: #374151; font-size: 11px; text-transform: uppercase; padding: 10px; text-align: left; border-bottom: 1px solid #e5e7eb; }
-            td { padding: 12px 10px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
-            .totals-container { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; border-top: 1px solid #e5e7eb; padding-top: 14px; }
-            .total-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
-            .total-usd { font-size: 16px; font-weight: bold; color: #1d4ed8; border-top: 1px solid #e5e7eb; padding-top: 6px; margin-top: 6px; }
-            .alt-currency { background: #f9fafb; padding: 6px 8px; border-radius: 6px; margin-top: 4px; font-weight: 600; font-size: 11px; color: #374151; }
-            .footer { text-align: center; font-size: 11px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 30px; }
+            @page { size: letter portrait; margin: 10mm 12mm; }
+            body { max-width: 210mm; margin: 0 auto; padding: 0; font-size: 11px; }
+
+            /* ENCABEZADO FISCAL */
+            .factura-header {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+              border: 2px solid #000;
+              padding: 12px 16px;
+              margin-bottom: 0;
+            }
+            .empresa-info h1 { font-size: 15px; font-weight: bold; margin-bottom: 2px; }
+            .empresa-info p { font-size: 10px; color: #333; line-height: 1.4; }
+            .rif-box {
+              border: 2px solid #000;
+              padding: 8px 14px;
+              text-align: center;
+              min-width: 180px;
+            }
+            .rif-box .label { font-size: 9px; font-weight: bold; text-transform: uppercase; }
+            .rif-box .rif-num { font-size: 16px; font-weight: bold; margin: 2px 0; }
+            .rif-box .doc-type { font-size: 11px; font-weight: bold; border-top: 1px solid #000; padding-top: 4px; margin-top: 4px; }
+
+            /* DATOS FACTURA */
+            .factura-datos {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              border: 2px solid #000;
+              border-top: none;
+            }
+            .factura-datos .col { padding: 8px 12px; }
+            .factura-datos .col:first-child { border-right: 1px solid #000; }
+            .dato-label { font-size: 9px; font-weight: bold; text-transform: uppercase; color: #555; }
+            .dato-valor { font-size: 11px; font-weight: bold; }
+            .dato-row { margin-bottom: 3px; }
+
+            /* TABLA ITEMS */
+            .tabla-items {
+              width: 100%;
+              border-collapse: collapse;
+              border: 2px solid #000;
+              border-top: none;
+              margin-top: 0;
+            }
+            .tabla-items th {
+              background: #000;
+              color: #fff;
+              font-size: 9px;
+              text-transform: uppercase;
+              padding: 6px 8px;
+              text-align: left;
+              font-weight: bold;
+            }
+            .tabla-items td {
+              padding: 8px;
+              border-bottom: 1px solid #ccc;
+              font-size: 11px;
+              vertical-align: top;
+            }
+            .tabla-items .text-right { text-align: right; }
+            .tabla-items .text-center { text-align: center; }
+
+            /* RESUMEN FISCAL */
+            .resumen-fiscal {
+              display: flex;
+              justify-content: space-between;
+              border: 2px solid #000;
+              border-top: none;
+            }
+            .resumen-izq { flex: 1; padding: 8px 12px; border-right: 1px solid #000; }
+            .resumen-der { width: 280px; padding: 8px 12px; }
+            .fiscal-row { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 2px; }
+            .fiscal-total { font-size: 14px; font-weight: bold; border-top: 2px solid #000; padding-top: 4px; margin-top: 4px; }
+            .monto-letras { font-size: 9px; font-style: italic; color: #333; margin-top: 4px; padding: 4px; background: #f5f5f5; border: 1px solid #ccc; }
+
+            /* PIE FISCAL */
+            .pie-fiscal {
+              border: 2px solid #000;
+              border-top: none;
+              padding: 8px 12px;
+              text-align: center;
+              font-size: 9px;
+              color: #333;
+            }
+            .pie-fiscal .contribuyente { font-weight: bold; font-size: 10px; color: #000; }
           `}
         </style>
       </head>
       <body>
         ${formato === 'ticket' ? `
-          <!-- CONTENIDO TICKET -->
-          <div class="ticket-header">
-            <div class="ticket-title">${config.nombre}</div>
+          <div class="center">
+            <div class="title">${config.nombre}</div>
             <div>RIF: ${config.rif_nit}</div>
-            <div>${config.direccion}</div>
-            <div>Tel: ${config.telefono}</div>
+            <div class="small">${config.direccion}</div>
+            <div class="small">Tel: ${config.telefono}</div>
           </div>
-
-          <div style="border-bottom: 1px dashed #9ca3af; padding-bottom: 6px; margin-bottom: 6px;">
-            <div class="ticket-row"><span>RECIBO:</span><strong>#${factura}</strong></div>
-            <div class="ticket-row"><span>FECHA:</span><span>${fecha}</span></div>
-            <div class="ticket-row"><span>PACIENTE:</span><span>${paciente_nombre}</span></div>
-            <div class="ticket-row"><span>C.I./DOC:</span><span>${paciente_cedula}</span></div>
-            <div class="ticket-row"><span>MÉDICO:</span><span>${doctor_nombre}</span></div>
-          </div>
-
-          <div style="margin-bottom: 6px;">
-            <div style="font-weight: bold; margin-bottom: 2px;">${procedimiento}</div>
-            ${dientes_tratados ? `<div>Dientes: ${dientes_tratados}</div>` : ''}
-          </div>
-
-          <div class="ticket-total">
-            <div class="ticket-row" style="font-size: 13px;">
-              <span>TOTAL USD:</span>
-              <span>$${Number(monto_usd).toFixed(2)}</span>
-            </div>
-            ${total_ves > 0 ? `
-              <div class="ticket-row" style="font-size: 11px; font-weight: normal; margin-top: 3px;">
-                <span>TOTAL BS:</span>
-                <span>Bs. ${Number(total_ves).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</span>
-              </div>
-            ` : ''}
-            ${total_cop > 0 ? `
-              <div class="ticket-row" style="font-size: 11px; font-weight: normal;">
-                <span>TOTAL COP:</span>
-                <span>$ ${Number(total_cop).toLocaleString('es-CO')}</span>
-              </div>
-            ` : ''}
-          </div>
-
-          <div class="ticket-row" style="margin-bottom: 8px;">
-            <span>PAGO:</span>
-            <span>${metodo_pago.toUpperCase()}</span>
-          </div>
-
-          <div class="ticket-footer">
+          <div class="sep"></div>
+          <div class="row bold"><span>FACTURA</span><span>#${factura}</span></div>
+          <div class="row"><span>CONTROL:</span><span>${numero_control}</span></div>
+          <div class="row"><span>FECHA:</span><span>${fecha}</span></div>
+          <div class="sep"></div>
+          <div class="row"><span>CLIENTE:</span><span>${paciente_nombre}</span></div>
+          <div class="row"><span>RIF/CI:</span><span>${paciente_cedula}</span></div>
+          <div class="sep"></div>
+          <div class="bold" style="margin-bottom:2px;">${procedimiento}</div>
+          ${dientes_tratados ? `<div class="small">Dientes: ${dientes_tratados}</div>` : ''}
+          <div class="sep"></div>
+          <div class="row"><span>BASE IMP.:</span><span>$${baseImponible.toFixed(2)}</span></div>
+          <div class="row"><span>IVA 16%:</span><span>$${iva.toFixed(2)}</span></div>
+          <div class="row bold" style="font-size:12px;"><span>TOTAL USD:</span><span>$${totalFactura.toFixed(2)}</span></div>
+          ${totalBs > 0 ? `<div class="row"><span>TOTAL BS:</span><span>Bs. ${totalBs.toLocaleString('es-VE', {minimumFractionDigits:2})}</span></div>` : ''}
+          <div class="sep"></div>
+          <div class="row"><span>PAGO:</span><span>${metodo_pago.toUpperCase()}</span></div>
+          <div class="sep"></div>
+          <div class="center small" style="margin-top:6px;">
+            <div class="bold">${config.contribuyente}</div>
             <div>${config.mensaje_recibo}</div>
-            <div style="margin-top: 4px;">*** GRACIAS POR SU VISITA ***</div>
+            <div style="margin-top:4px;">*** GRACIAS POR SU PREFERENCIA ***</div>
           </div>
         ` : `
-          <!-- CONTENIDO CARTA -->
-          <div class="header">
-            <div>
-              <div class="clinic-name">🏥 ${config.nombre}</div>
-              <div style="font-size: 12px; color: #6b7280; margin-top: 3px;">RIF / NIT: ${config.rif_nit}</div>
-              <div style="font-size: 12px; color: #6b7280;">${config.direccion}</div>
-              <div style="font-size: 12px; color: #6b7280;">Tel: ${config.telefono} | ${config.email}</div>
+          <!-- ENCABEZADO FISCAL -->
+          <div class="factura-header">
+            <div class="empresa-info">
+              <h1>🏥 ${config.nombre}</h1>
+              <p>${config.direccion}</p>
+              <p>Tel: ${config.telefono} | Email: ${config.email}</p>
             </div>
-            <div style="text-align: right;">
-              <div class="doc-tag">Comprobante de Pago</div>
-              <div style="font-size: 17px; font-weight: bold; font-family: monospace;">#${factura}</div>
-              <div style="font-size: 12px; color: #6b7280; margin-top: 2px;">Fecha: ${fecha}</div>
-            </div>
-          </div>
-
-          <div class="info-box">
-            <div>
-              <div class="info-title">Paciente</div>
-              <div style="font-size: 14px; font-weight: bold; color: #111827;">${paciente_nombre}</div>
-              <div style="color: #4b5563;">Doc / Cédula: ${paciente_cedula}</div>
-              ${paciente_telefono ? `<div style="color: #4b5563;">Tel: ${paciente_telefono}</div>` : ''}
-            </div>
-            <div style="text-align: right;">
-              <div class="info-title">Profesional Tratante</div>
-              <div style="font-size: 14px; font-weight: bold; color: #111827;">${doctor_nombre}</div>
-              <div style="color: #059669; font-weight: 600; margin-top: 2px;">✓ Pago Verificado</div>
+            <div class="rif-box">
+              <div class="label">R.I.F.</div>
+              <div class="rif-num">${config.rif_nit}</div>
+              <div class="doc-type">FACTURA</div>
             </div>
           </div>
 
-          <table>
+          <!-- DATOS DE FACTURACIÓN -->
+          <div class="factura-datos">
+            <div class="col">
+              <div class="dato-row">
+                <span class="dato-label">Cliente / Paciente:</span>
+                <span class="dato-valor">${paciente_nombre}</span>
+              </div>
+              <div class="dato-row">
+                <span class="dato-label">RIF / C.I.:</span>
+                <span class="dato-valor">${paciente_cedula}</span>
+              </div>
+              <div class="dato-row">
+                <span class="dato-label">Dirección:</span>
+                <span class="dato-valor">${paciente_direccion || 'No especificada'}</span>
+              </div>
+              <div class="dato-row">
+                <span class="dato-label">Teléfono:</span>
+                <span class="dato-valor">${paciente_telefono || 'N/A'}</span>
+              </div>
+            </div>
+            <div class="col">
+              <div class="dato-row">
+                <span class="dato-label">Nº Factura:</span>
+                <span class="dato-valor">${factura}</span>
+              </div>
+              <div class="dato-row">
+                <span class="dato-label">Nº Control:</span>
+                <span class="dato-valor">${numero_control}</span>
+              </div>
+              <div class="dato-row">
+                <span class="dato-label">Fecha Emisión:</span>
+                <span class="dato-valor">${fecha}</span>
+              </div>
+              <div class="dato-row">
+                <span class="dato-label">Profesional:</span>
+                <span class="dato-valor">${doctor_nombre}</span>
+              </div>
+              ${tasa_ves > 0 ? `
+              <div class="dato-row">
+                <span class="dato-label">Tasa BCV (Bs/USD):</span>
+                <span class="dato-valor">Bs. ${Number(tasa_ves).toFixed(2)}</span>
+              </div>` : ''}
+            </div>
+          </div>
+
+          <!-- TABLA DE SERVICIOS -->
+          <table class="tabla-items">
             <thead>
               <tr>
-                <th>Descripción / Tratamiento</th>
-                <th style="text-align: center; width: 140px;">Piezas / Dientes</th>
-                <th style="text-align: right; width: 140px;">Monto USD</th>
+                <th style="width:40px;">Cant.</th>
+                <th>Descripción del Servicio Médico / Odontológico</th>
+                <th style="width:80px;" class="text-center">Piezas</th>
+                <th style="width:100px;" class="text-right">P. Unit. USD</th>
+                <th style="width:100px;" class="text-right">Total USD</th>
               </tr>
             </thead>
             <tbody>
               <tr>
+                <td class="text-center">1</td>
                 <td>
-                  <div style="font-weight: 600; color: #111827;">${procedimiento}</div>
-                  ${diagnostico ? `<div style="font-size: 11px; color: #6b7280; margin-top: 2px;">${diagnostico}</div>` : ''}
+                  <strong>${procedimiento}</strong>
+                  ${diagnostico ? `<br><span style="font-size:10px;color:#555;">Dx: ${diagnostico}</span>` : ''}
                 </td>
-                <td style="text-align: center; font-family: monospace; color: #4b5563;">
-                  ${dientes_tratados || '—'}
-                </td>
-                <td style="text-align: right; font-weight: bold; color: #111827;">
-                  $${Number(subtotal_usd || monto_usd).toFixed(2)}
-                </td>
+                <td class="text-center" style="font-family:monospace;">${dientes_tratados || '—'}</td>
+                <td class="text-right">$${baseImponible.toFixed(2)}</td>
+                <td class="text-right"><strong>$${baseImponible.toFixed(2)}</strong></td>
+              </tr>
+              <tr>
+                <td colspan="5" style="height:40px;border:none;"></td>
               </tr>
             </tbody>
           </table>
 
-          <div class="totals-container">
-            <div style="font-size: 12px; color: #4b5563; max-width: 320px;">
-              <div><strong>Método de Pago:</strong> ${metodo_pago}</div>
-              ${tasa_ves > 0 ? `<div><strong>Tasa VES:</strong> Bs. ${Number(tasa_ves).toFixed(2)}</div>` : ''}
-              ${tasa_cop > 0 ? `<div><strong>Tasa COP:</strong> $ ${Number(tasa_cop).toFixed(2)}</div>` : ''}
+          <!-- RESUMEN FISCAL -->
+          <div class="resumen-fiscal">
+            <div class="resumen-izq">
+              <div class="monto-letras">
+                <strong>SON:</strong> ${montoLetras}
+              </div>
+              <div style="margin-top:6px;">
+                <span class="dato-label">Forma de Pago:</span>
+                <span class="dato-valor">${metodo_pago.toUpperCase()}</span>
+              </div>
             </div>
-            <div style="width: 260px;">
-              <div class="total-row">
-                <span style="color: #6b7280;">Subtotal:</span>
-                <span>$${Number(subtotal_usd || monto_usd).toFixed(2)}</span>
+            <div class="resumen-der">
+              <div class="fiscal-row">
+                <span>Base Imponible:</span>
+                <span>$${baseImponible.toFixed(2)}</span>
               </div>
-              ${impuesto_usd > 0 ? `
-                <div class="total-row">
-                  <span style="color: #6b7280;">Impuesto:</span>
-                  <span>$${Number(impuesto_usd).toFixed(2)}</span>
-                </div>
-              ` : ''}
-              <div class="total-row total-usd">
-                <span>TOTAL USD:</span>
-                <span>$${Number(monto_usd).toFixed(2)}</span>
+              <div class="fiscal-row">
+                <span>Exento / Exonerado:</span>
+                <span>$${exento.toFixed(2)}</span>
               </div>
-              ${total_ves > 0 ? `
-                <div class="total-row alt-currency">
-                  <span>Equivalente VES:</span>
-                  <span>Bs. ${Number(total_ves).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</span>
-                </div>
-              ` : ''}
+              <div class="fiscal-row">
+                <span>Sub-Total:</span>
+                <span>$${baseImponible.toFixed(2)}</span>
+              </div>
+              <div class="fiscal-row">
+                <span>I.V.A. (16%):</span>
+                <span>$${iva.toFixed(2)}</span>
+              </div>
+              <div class="fiscal-row fiscal-total">
+                <span>TOTAL A PAGAR (USD):</span>
+                <span>$${totalFactura.toFixed(2)}</span>
+              </div>
+              ${totalBs > 0 ? `
+              <div class="fiscal-row" style="font-weight:bold;color:#333;">
+                <span>TOTAL (Bs.):</span>
+                <span>Bs. ${totalBs.toLocaleString('es-VE', {minimumFractionDigits:2})}</span>
+              </div>` : ''}
               ${total_cop > 0 ? `
-                <div class="total-row alt-currency">
-                  <span>Equivalente COP:</span>
-                  <span>$ ${Number(total_cop).toLocaleString('es-CO')}</span>
-                </div>
-              ` : ''}
+              <div class="fiscal-row" style="color:#555;">
+                <span>Ref. COP:</span>
+                <span>$ ${Number(total_cop).toLocaleString('es-CO')}</span>
+              </div>` : ''}
             </div>
           </div>
 
-          <div class="footer">
-            <div style="font-weight: 500; color: #4b5563;">${config.mensaje_recibo}</div>
-            <div style="font-size: 10px; margin-top: 4px;">Comprobante de atención médica generado electrónicamente.</div>
+          <!-- PIE FISCAL OBLIGATORIO -->
+          <div class="pie-fiscal">
+            <div class="contribuyente">${config.contribuyente}</div>
+            <div style="margin-top:3px;">${config.mensaje_recibo}</div>
+            <div style="margin-top:2px;">Impreso conforme a la Providencia Administrativa N° 0071 del SENIAT.</div>
+            <div style="margin-top:2px;">Este documento no es negociable. Conserve su copia.</div>
           </div>
         `}
       </body>
@@ -240,216 +361,118 @@ export default function ReciboModal({ isOpen, onClose, data, consultorio }) {
     `
 
     printWindow.document.open()
-    printWindow.document.write(htmlContent)
+    printWindow.document.write(html)
     printWindow.document.close()
-
-    // Ejecutar impresión automática al cargar la ventana
-    printWindow.onload = () => {
-      printWindow.focus()
-      printWindow.print()
-    }
+    printWindow.onload = () => { printWindow.focus(); printWindow.print() }
   }
 
   const handleWhatsApp = () => {
     const phone = String(paciente_telefono).replace(/[^0-9]/g, '')
-    const mensaje = `Hola *${paciente_nombre}*, le compartimos su recibo médico de *${config.nombre}*:%0A%0A` +
-      `🧾 *Comprobante:* #${factura}%0A` +
-      `📅 *Fecha:* ${fecha}%0A` +
-      `🩺 *Tratamiento:* ${procedimiento}%0A` +
-      (dientes_tratados ? `🦷 *Dientes:* ${dientes_tratados}%0A` : '') +
-      `💵 *Monto Total:* $${Number(monto_usd).toFixed(2)} USD` +
-      (total_ves > 0 ? ` (Bs. ${Number(total_ves).toLocaleString('es-VE')})` : '') +
-      (total_cop > 0 ? ` ($ ${Number(total_cop).toLocaleString('es-CO')} COP)` : '') + `%0A` +
-      `💳 *Forma de Pago:* ${metodo_pago}%0A%0A` +
-      `_${config.mensaje_recibo}_`
-
-    window.open(`https://wa.me/${phone}?text=${mensaje}`, '_blank')
+    const msg = `*${config.nombre}*%0ARIF: ${config.rif_nit}%0A%0A` +
+      `FACTURA N° ${factura}%0A` +
+      `Fecha: ${fecha}%0A%0A` +
+      `Estimado/a *${paciente_nombre}*:%0A` +
+      `🩺 ${procedimiento}%0A` +
+      (dientes_tratados ? `🦷 Dientes: ${dientes_tratados}%0A` : '') +
+      `%0A💰 Base: $${baseImponible.toFixed(2)}%0A` +
+      `📊 IVA 16%: $${iva.toFixed(2)}%0A` +
+      `✅ *TOTAL: $${totalFactura.toFixed(2)}*%0A` +
+      (totalBs > 0 ? `(Bs. ${totalBs.toLocaleString('es-VE', {minimumFractionDigits:2})})%0A` : '') +
+      `💳 Pago: ${metodo_pago}%0A%0A` +
+      `_${config.contribuyente}_%0A${config.mensaje_recibo}`
+    window.open(`https://wa.me/${phone}?text=${msg}`, '_blank')
   }
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white dark:bg-gray-800 w-full max-w-2xl rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-        
-        {/* Barra superior de controles */}
-        <div className="p-4 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center bg-gray-200 dark:bg-gray-700 p-1 rounded-xl text-xs font-semibold">
-            <button
-              onClick={() => setFormato('carta')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
-                formato === 'carta' ? 'bg-white dark:bg-gray-800 shadow-sm text-blue-600 font-bold' : 'text-gray-500'
-              }`}
-            >
-              <FileText className="w-3.5 h-3.5" /> Carta / A4
+      <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+        <div className="p-4 bg-gray-50 border-b flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center bg-gray-200 p-1 rounded-xl text-xs font-semibold">
+            <button onClick={() => setFormato('factura')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${formato === 'factura' ? 'bg-white shadow-sm text-blue-600 font-bold' : 'text-gray-500'}`}>
+              <FileText className="w-3.5 h-3.5" /> Factura SENIAT
             </button>
-            <button
-              onClick={() => setFormato('ticket')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
-                formato === 'ticket' ? 'bg-white dark:bg-gray-800 shadow-sm text-blue-600 font-bold' : 'text-gray-500'
-              }`}
-            >
-              <Receipt className="w-3.5 h-3.5" /> Ticket (80mm)
+            <button onClick={() => setFormato('ticket')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${formato === 'ticket' ? 'bg-white shadow-sm text-blue-600 font-bold' : 'text-gray-500'}`}>
+              <Receipt className="w-3.5 h-3.5" /> Ticket 80mm
             </button>
           </div>
-
           <div className="flex items-center gap-2">
             {paciente_telefono && (
-              <button
-                onClick={handleWhatsApp}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg inline-flex items-center gap-1.5 transition-colors shadow-sm"
-              >
+              <button onClick={handleWhatsApp} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg inline-flex items-center gap-1.5">
                 <MessageCircle className="w-4 h-4" /> WhatsApp
               </button>
             )}
-            <button
-              onClick={handlePrint}
-              className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-1.5 rounded-lg inline-flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
-            >
-              <Printer className="w-4 h-4" /> Imprimir Recibo
+            <button onClick={handlePrint} className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-1.5 rounded-lg inline-flex items-center gap-1.5">
+              <Printer className="w-4 h-4" /> Imprimir
             </button>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-            >
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100">
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* Vista previa en pantalla (Formato Carta) */}
-        {formato === 'carta' && (
-          <div className="p-8 bg-white text-gray-800 font-sans max-h-[75vh] overflow-y-auto">
-            <div className="flex justify-between items-start border-b-2 border-blue-600 pb-6">
+        {/* Vista previa en pantalla */}
+        <div className="p-6 max-h-[75vh] overflow-y-auto bg-gray-100">
+          <div className="bg-white max-w-[800px] mx-auto shadow-lg border-2 border-black p-0 text-[11px] font-sans text-black">
+            <div className="flex justify-between items-start border-b-2 border-black p-4">
               <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl">🏥</span>
-                  <h1 className="text-xl font-bold text-gray-900 tracking-tight">{config.nombre}</h1>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">RIF/NIT: {config.rif_nit}</p>
-                <p className="text-xs text-gray-500">{config.direccion}</p>
-                <p className="text-xs text-gray-500">Tel: {config.telefono} | {config.email}</p>
+                <h1 className="text-base font-bold">🏥 {config.nombre}</h1>
+                <p className="text-[10px] text-gray-600">{config.direccion}</p>
+                <p className="text-[10px] text-gray-600">Tel: {config.telefono}</p>
               </div>
-              <div className="text-right">
-                <span className="inline-block bg-blue-50 text-blue-700 font-bold text-xs uppercase px-3 py-1 rounded-full border border-blue-200 mb-2">
-                  Comprobante de Pago
-                </span>
-                <p className="text-lg font-mono font-bold text-gray-800">#{factura}</p>
-                <p className="text-xs text-gray-500">Fecha: {fecha}</p>
+              <div className="border-2 border-black p-2 text-center min-w-[140px]">
+                <p className="text-[9px] font-bold">R.I.F.</p>
+                <p className="text-sm font-bold">{config.rif_nit}</p>
+                <p className="text-[10px] font-bold border-t border-black mt-1 pt-1">FACTURA</p>
               </div>
             </div>
-
-            <div className="grid grid-cols-2 gap-6 my-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
-              <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase">Paciente</p>
-                <p className="text-sm font-bold text-gray-900">{paciente_nombre}</p>
-                <p className="text-xs text-gray-600">Doc: {paciente_cedula}</p>
-                {paciente_telefono && <p className="text-xs text-gray-600">Tel: {paciente_telefono}</p>}
+            <div className="grid grid-cols-2 border-b-2 border-black">
+              <div className="p-3 border-r border-black space-y-1">
+                <p><strong>Cliente:</strong> {paciente_nombre}</p>
+                <p><strong>RIF/CI:</strong> {paciente_cedula}</p>
+                <p><strong>Tel:</strong> {paciente_telefono || 'N/A'}</p>
               </div>
-              <div className="text-right">
-                <p className="text-xs font-semibold text-gray-400 uppercase">Profesional</p>
-                <p className="text-sm font-bold text-gray-900">{doctor_nombre}</p>
-                <p className="text-xs text-emerald-600 font-medium flex items-center justify-end gap-1 mt-0.5">
-                  <CheckCircle className="w-3.5 h-3.5" /> Pago Verificado
-                </p>
+              <div className="p-3 space-y-1">
+                <p><strong>N° Factura:</strong> {factura}</p>
+                <p><strong>N° Control:</strong> {numero_control}</p>
+                <p><strong>Fecha:</strong> {fecha}</p>
+                {tasa_ves > 0 && <p><strong>Tasa BCV:</strong> Bs. {Number(tasa_ves).toFixed(2)}</p>}
               </div>
             </div>
-
-            <div className="overflow-hidden border border-gray-200 rounded-xl my-6">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-gray-100 text-gray-600 uppercase text-[11px] font-bold">
-                  <tr>
-                    <th className="p-3">Descripción / Tratamiento</th>
-                    <th className="p-3 text-center">Piezas</th>
-                    <th className="p-3 text-right">Monto (USD)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  <tr>
-                    <td className="p-3">
-                      <p className="font-semibold text-gray-900">{procedimiento}</p>
-                      {diagnostico && <p className="text-xs text-gray-500 mt-0.5">{diagnostico}</p>}
-                    </td>
-                    <td className="p-3 text-center font-mono text-xs text-gray-600">{dientes_tratados || '—'}</td>
-                    <td className="p-3 text-right font-bold text-gray-900">${Number(subtotal_usd || monto_usd).toFixed(2)}</td>
-                  </tr>
-                </tbody>
-              </table>
+            <table className="w-full border-collapse">
+              <thead><tr className="bg-black text-white text-[9px] uppercase">
+                <th className="p-2 text-left">Descripción</th>
+                <th className="p-2 text-center w-16">Piezas</th>
+                <th className="p-2 text-right w-24">P.Unit</th>
+                <th className="p-2 text-right w-24">Total</th>
+              </tr></thead>
+              <tbody>
+                <tr className="border-b">
+                  <td className="p-2"><strong>{procedimiento}</strong>{diagnostico && <span className="text-[10px] text-gray-500 block">Dx: {diagnostico}</span>}</td>
+                  <td className="p-2 text-center font-mono">{dientes_tratados || '—'}</td>
+                  <td className="p-2 text-right">${baseImponible.toFixed(2)}</td>
+                  <td className="p-2 text-right font-bold">${baseImponible.toFixed(2)}</td>
+                </tr>
+              </tbody>
+            </table>
+            <div className="flex border-t-2 border-black">
+              <div className="flex-1 p-3 border-r border-black">
+                <p className="text-[9px] italic bg-gray-100 p-1 border"><strong>SON:</strong> {montoLetras}</p>
+                <p className="mt-2"><strong>Pago:</strong> {metodo_pago}</p>
+              </div>
+              <div className="w-64 p-3 space-y-1">
+                <div className="flex justify-between"><span>Base Imponible:</span><span>${baseImponible.toFixed(2)}</span></div>
+                <div className="flex justify-between"><span>IVA 16%:</span><span>${iva.toFixed(2)}</span></div>
+                <div className="flex justify-between font-bold text-sm border-t-2 border-black pt-1 mt-1"><span>TOTAL USD:</span><span>${totalFactura.toFixed(2)}</span></div>
+                {totalBs > 0 && <div className="flex justify-between font-bold"><span>Total Bs.:</span><span>Bs. {totalBs.toLocaleString('es-VE',{minimumFractionDigits:2})}</span></div>}
+              </div>
             </div>
-
-            <div className="flex justify-between items-start gap-6 border-t border-gray-200 pt-4">
-              <div className="text-xs text-gray-500 space-y-1">
-                <p><span className="font-semibold text-gray-700">Método de Pago:</span> {metodo_pago}</p>
-                {tasa_ves > 0 && <p><span className="font-semibold text-gray-700">Tasa VES:</span> Bs. {Number(tasa_ves).toFixed(2)}</p>}
-                {tasa_cop > 0 && <p><span className="font-semibold text-gray-700">Tasa COP:</span> $ {Number(tasa_cop).toFixed(2)}</p>}
-              </div>
-              <div className="w-64 space-y-1.5">
-                <div className="flex justify-between text-base font-bold text-blue-700 border-t border-gray-200 pt-2">
-                  <span>Total USD:</span>
-                  <span>${Number(monto_usd).toFixed(2)}</span>
-                </div>
-                {total_ves > 0 && (
-                  <div className="flex justify-between text-xs font-semibold text-gray-700 bg-gray-50 p-1.5 rounded">
-                    <span>Total VES:</span>
-                    <span>Bs. {Number(total_ves).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</span>
-                  </div>
-                )}
-                {total_cop > 0 && (
-                  <div className="flex justify-between text-xs font-semibold text-gray-700 bg-gray-50 p-1.5 rounded">
-                    <span>Total COP:</span>
-                    <span>$ {Number(total_cop).toLocaleString('es-CO')}</span>
-                  </div>
-                )}
-              </div>
+            <div className="text-center text-[9px] p-2 border-t-2 border-black bg-gray-50">
+              <p className="font-bold">{config.contribuyente}</p>
+              <p>{config.mensaje_recibo}</p>
+              <p>Providencia Administrativa N° 0071 SENIAT</p>
             </div>
           </div>
-        )}
-
-        {/* Vista previa en pantalla (Formato Ticket) */}
-        {formato === 'ticket' && (
-          <div className="p-6 bg-white text-gray-900 font-mono text-xs max-w-[340px] mx-auto border-x border-dashed border-gray-300 my-4 max-h-[75vh] overflow-y-auto">
-            <div className="text-center space-y-1 border-b border-dashed border-gray-300 pb-3">
-              <h2 className="text-sm font-black uppercase">{config.nombre}</h2>
-              <p className="text-[11px] text-gray-600">RIF: {config.rif_nit}</p>
-              <p className="text-[10px] text-gray-500">{config.direccion}</p>
-              <p className="text-[11px] text-gray-600">Tel: {config.telefono}</p>
-            </div>
-
-            <div className="py-2.5 border-b border-dashed border-gray-300 space-y-0.5 text-[11px]">
-              <div className="flex justify-between font-bold"><span>RECIBO:</span><span>#{factura}</span></div>
-              <div className="flex justify-between"><span>FECHA:</span><span>{fecha}</span></div>
-              <div className="flex justify-between"><span>PACIENTE:</span><span className="truncate max-w-[170px]">{paciente_nombre}</span></div>
-              <div className="flex justify-between"><span>DOC:</span><span>{paciente_cedula}</span></div>
-              <div className="flex justify-between"><span>MÉDICO:</span><span className="truncate max-w-[170px]">{doctor_nombre}</span></div>
-            </div>
-
-            <div className="py-2.5 border-b border-dashed border-gray-300">
-              <p className="font-bold text-[11px] uppercase mb-1">{procedimiento}</p>
-              {dientes_tratados && <p className="text-[10px] text-gray-600">Dientes: {dientes_tratados}</p>}
-              <div className="flex justify-between font-bold text-sm mt-2">
-                <span>TOTAL USD:</span><span>${Number(monto_usd).toFixed(2)}</span>
-              </div>
-              {total_ves > 0 && (
-                <div className="flex justify-between text-[11px] text-gray-700 mt-1">
-                  <span>TOTAL BS:</span><span>Bs. {Number(total_ves).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</span>
-                </div>
-              )}
-              {total_cop > 0 && (
-                <div className="flex justify-between text-[11px] text-gray-700">
-                  <span>TOTAL COP:</span><span>$ {Number(total_cop).toLocaleString('es-CO')}</span>
-                </div>
-              )}
-            </div>
-
-            <div className="pt-2 text-[10px] text-gray-600">
-              <p>PAGO: {metodo_pago.toUpperCase()}</p>
-            </div>
-
-            <div className="mt-4 pt-3 border-t border-dashed border-gray-300 text-center text-[10px] text-gray-500">
-              <p className="font-bold">{config.mensaje_recibo}</p>
-              <p className="mt-1 text-[9px]">*** GRACIAS POR SU VISITA ***</p>
-            </div>
-          </div>
-        )}
-
+        </div>
       </div>
     </div>
   )
