@@ -10,9 +10,9 @@ export default function ReciboModal({ isOpen, onClose, data, consultorio }) {
     nombre: 'Consultorio Dental & Médico',
     rif_nit: 'J-12345678-0',
     telefono: '+58 412 000 0000',
-    direccion: 'Av. Principal, Centro Profesional',
+    direccion: 'Av. Principal, Centro Profesional, Piso 2',
     email: 'contacto@consultorio.com',
-    mensaje_recibo: 'Gracias por su confianza. ¡Cuidamos de su salud y su sonrisa!'
+    mensaje_recibo: 'Gracias por su confianza. ¡Cuidamos de su salud!'
   }
 
   const {
@@ -36,32 +36,155 @@ export default function ReciboModal({ isOpen, onClose, data, consultorio }) {
     factura = id ? `REC-${String(id).slice(0, 8).toUpperCase()}` : 'REC-00001'
   } = data
 
+  // Función de impresión infalible usando iframe invisible
   const handlePrint = () => {
-    window.print()
+    const targetId = formato === 'carta' ? 'area-recibo' : 'area-recibo-ticket'
+    const element = document.getElementById(targetId)
+    if (!element) return
+
+    const iframe = document.createElement('iframe')
+    iframe.style.position = 'fixed'
+    iframe.style.right = '0'
+    iframe.style.bottom = '0'
+    iframe.style.width = '0'
+    iframe.style.height = '0'
+    iframe.style.border = '0'
+    document.body.appendChild(iframe)
+
+    const doc = iframe.contentWindow.document
+    doc.open()
+    doc.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Recibo - #${factura}</title>
+          <style>
+            * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+            body { background: #fff; color: #111827; }
+            ${formato === 'ticket' ? `
+              @page { size: 80mm auto; margin: 0; }
+              body { width: 72mm; margin: 0 auto; padding: 12px 4px; font-family: monospace; font-size: 11px; }
+            ` : `
+              @page { size: letter portrait; margin: 12mm; }
+              body { max-width: 800px; margin: 0 auto; padding: 10px; }
+            `}
+            .flex { display: flex; }
+            .justify-between { justify-content: space-between; }
+            .items-center { align-items: center; }
+            .items-start { align-items: flex-start; }
+            .text-right { text-align: right; }
+            .text-center { text-align: center; }
+            .font-bold { font-weight: bold; }
+            .font-semibold { font-weight: 600; }
+            .font-mono { font-family: monospace; }
+            .text-xs { font-size: 11px; }
+            .text-sm { font-size: 13px; }
+            .text-base { font-size: 15px; }
+            .text-lg { font-size: 17px; }
+            .text-xl { font-size: 20px; }
+            .text-2xl { font-size: 24px; }
+            .text-gray-400 { color: #9ca3af; }
+            .text-gray-500 { color: #6b7280; }
+            .text-gray-600 { color: #4b5563; }
+            .text-gray-700 { color: #374151; }
+            .text-gray-800 { color: #1f2937; }
+            .text-gray-900 { color: #111827; }
+            .text-blue-600 { color: #2563eb; }
+            .text-blue-700 { color: #1d4ed8; }
+            .text-emerald-600 { color: #059669; }
+            .bg-gray-50 { background-color: #f9fafb; }
+            .bg-gray-100 { background-color: #f3f4f6; }
+            .bg-blue-50 { background-color: #eff6ff; }
+            .p-1\\.5 { padding: 6px; }
+            .p-3 { padding: 10px 12px; }
+            .p-4 { padding: 14px; }
+            .p-6 { padding: 20px; }
+            .p-8 { padding: 28px; }
+            .py-2 { padding-top: 8px; padding-bottom: 8px; }
+            .py-2\\.5 { padding-top: 10px; padding-bottom: 10px; }
+            .pb-3 { padding-bottom: 12px; }
+            .pb-6 { padding-bottom: 20px; }
+            .pt-2 { padding-top: 8px; }
+            .pt-3 { padding-top: 12px; }
+            .pt-4 { padding-top: 16px; }
+            .mt-0\\.5 { margin-top: 2px; }
+            .mt-1 { margin-top: 4px; }
+            .mt-2 { margin-top: 8px; }
+            .mt-4 { margin-top: 16px; }
+            .mt-8 { margin-top: 28px; }
+            .mb-1 { margin-bottom: 4px; }
+            .mb-2 { margin-bottom: 8px; }
+            .my-6 { margin-top: 20px; margin-bottom: 20px; }
+            .border { border: 1px solid #e5e7eb; }
+            .border-b { border-bottom: 1px solid #e5e7eb; }
+            .border-b-2 { border-bottom: 2px solid #2563eb; }
+            .border-t { border-top: 1px solid #e5e7eb; }
+            .border-dashed { border-style: dashed; }
+            .border-gray-100 { border-color: #f3f4f6; }
+            .border-gray-200 { border-color: #e5e7eb; }
+            .border-gray-300 { border-color: #d1d5db; }
+            .border-blue-200 { border-color: #bfdbfe; }
+            .border-blue-600 { border-color: #2563eb; }
+            .rounded { border-radius: 4px; }
+            .rounded-lg { border-radius: 8px; }
+            .rounded-xl { border-radius: 12px; }
+            .rounded-full { border-radius: 9999px; }
+            .grid { display: grid; }
+            .grid-cols-2 { grid-template-columns: 1fr 1fr; }
+            .gap-6 { gap: 24px; }
+            .w-full { width: 100%; }
+            .w-64 { width: 240px; }
+            .uppercase { text-transform: uppercase; }
+            .tracking-wider { letter-spacing: 0.05em; }
+            .tracking-tight { letter-spacing: -0.025em; }
+            .space-y-1 > * + * { margin-top: 4px; }
+            .space-y-1\\.5 > * + * { margin-top: 6px; }
+            .space-y-2 > * + * { margin-top: 8px; }
+            table { width: 100%; border-collapse: collapse; }
+            th { background-color: #f9fafb; font-size: 11px; text-transform: uppercase; color: #4b5563; font-weight: bold; border-bottom: 1px solid #e5e7eb; }
+            td { border-bottom: 1px solid #e5e7eb; }
+          </style>
+        </head>
+        <body>
+          ${element.innerHTML}
+        </body>
+      </html>
+    `)
+    doc.close()
+
+    setTimeout(() => {
+      iframe.contentWindow.focus()
+      iframe.contentWindow.print()
+      setTimeout(() => {
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe)
+        }
+      }, 2000)
+    }, 250)
   }
 
   const handleWhatsApp = () => {
     const phone = String(paciente_telefono).replace(/[^0-9]/g, '')
-    const mensaje = `Hola *${paciente_nombre}*, le compartimos el resumen de su recibo médico de *${config.nombre}*:%0A%0A` +
-      `🧾 *Comprobante:* #${factura}%0A` +
+    const mensaje = `Hola *${paciente_nombre}*, le compartimos su comprobante de *${config.nombre}*:%0A%0A` +
+      `🧾 *Recibo:* #${factura}%0A` +
       `📅 *Fecha:* ${fecha}%0A` +
       `🩺 *Tratamiento:* ${procedimiento}%0A` +
       (dientes_tratados ? `🦷 *Dientes:* ${dientes_tratados}%0A` : '') +
-      `💵 *Monto:* $${Number(monto_usd).toFixed(2)} USD` +
+      `💵 *Monto Total:* $${Number(monto_usd).toFixed(2)} USD` +
       (total_ves > 0 ? ` (Bs. ${Number(total_ves).toLocaleString('es-VE')})` : '') +
       (total_cop > 0 ? ` ($ ${Number(total_cop).toLocaleString('es-CO')} COP)` : '') + `%0A` +
-      `💳 *Método de Pago:* ${metodo_pago}%0A%0A` +
+      `💳 *Pago:* ${metodo_pago}%0A%0A` +
       `_${config.mensaje_recibo}_`
 
     window.open(`https://wa.me/${phone}?text=${mensaje}`, '_blank')
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto print:p-0 print:bg-white print:static">
-      <div className="bg-white dark:bg-gray-800 w-full max-w-2xl rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden print:border-none print:shadow-none print:w-full print:max-w-none">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white dark:bg-gray-800 w-full max-w-2xl rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
         
-        {/* Barra superior de controles (Oculta al imprimir) */}
-        <div className="p-4 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 flex flex-wrap items-center justify-between gap-3 print:hidden">
+        {/* Controles superiores */}
+        <div className="p-4 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center bg-gray-200 dark:bg-gray-700 p-1 rounded-xl text-xs font-semibold">
             <button
               onClick={() => setFormato('carta')}
@@ -92,7 +215,7 @@ export default function ReciboModal({ isOpen, onClose, data, consultorio }) {
             )}
             <button
               onClick={handlePrint}
-              className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg inline-flex items-center gap-1.5 transition-colors shadow-sm"
+              className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-4 py-1.5 rounded-lg inline-flex items-center gap-1.5 transition-colors shadow-sm font-bold"
             >
               <Printer className="w-4 h-4" /> Imprimir
             </button>
@@ -105,14 +228,14 @@ export default function ReciboModal({ isOpen, onClose, data, consultorio }) {
           </div>
         </div>
 
-        {/* FORMATO CARTA (A4 / FACTURA FORMAL) */}
+        {/* FORMATO CARTA / FACTURA */}
         {formato === 'carta' && (
-          <div id="area-recibo" className="p-8 bg-white text-gray-800 font-sans print:p-0">
+          <div id="area-recibo" className="p-8 bg-white text-gray-800 font-sans">
             <div className="flex justify-between items-start border-b-2 border-blue-600 pb-6">
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">🏥</span>
-                  <h1 className="text-xl font-bold text-gray-900">{config.nombre}</h1>
+                  <h1 className="text-xl font-bold text-gray-900 tracking-tight">{config.nombre}</h1>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">RIF/NIT: {config.rif_nit}</p>
                 <p className="text-xs text-gray-500">{config.direccion}</p>
@@ -135,7 +258,7 @@ export default function ReciboModal({ isOpen, onClose, data, consultorio }) {
                 {paciente_telefono && <p className="text-xs text-gray-600">Tel: {paciente_telefono}</p>}
               </div>
               <div className="text-right">
-                <p className="text-xs font-semibold text-gray-400 uppercase">Profesional</p>
+                <p className="text-xs font-semibold text-gray-400 uppercase">Profesional Tratante</p>
                 <p className="text-sm font-bold text-gray-900">{doctor_nombre}</p>
                 <p className="text-xs text-emerald-600 font-medium flex items-center justify-end gap-1 mt-0.5">
                   <CheckCircle className="w-3.5 h-3.5" /> Pago Verificado
@@ -156,7 +279,7 @@ export default function ReciboModal({ isOpen, onClose, data, consultorio }) {
                   <tr>
                     <td className="p-3">
                       <p className="font-semibold text-gray-900">{procedimiento}</p>
-                      {diagnostico && <p className="text-xs text-gray-500">{diagnostico}</p>}
+                      {diagnostico && <p className="text-xs text-gray-500 mt-0.5">{diagnostico}</p>}
                     </td>
                     <td className="p-3 text-center font-mono text-xs text-gray-600">{dientes_tratados || '—'}</td>
                     <td className="p-3 text-right font-bold text-gray-900">${Number(subtotal_usd || monto_usd).toFixed(2)}</td>
@@ -197,9 +320,9 @@ export default function ReciboModal({ isOpen, onClose, data, consultorio }) {
           </div>
         )}
 
-        {/* FORMATO TICKET TÉRMICO (80MM) */}
+        {/* FORMATO TICKET TÉRMICO */}
         {formato === 'ticket' && (
-          <div id="area-recibo-ticket" className="p-6 bg-white text-gray-900 font-mono text-xs max-w-[340px] mx-auto border-x border-dashed border-gray-300 print:border-none print:p-0 print:max-w-none">
+          <div id="area-recibo-ticket" className="p-6 bg-white text-gray-900 font-mono text-xs max-w-[340px] mx-auto border-x border-dashed border-gray-300">
             <div className="text-center space-y-1 border-b border-dashed border-gray-300 pb-3">
               <h2 className="text-sm font-black uppercase">{config.nombre}</h2>
               <p className="text-[11px] text-gray-600">RIF: {config.rif_nit}</p>
