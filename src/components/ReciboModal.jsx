@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
-import { Printer, X, MessageCircle, FileText, Receipt } from 'lucide-react'
+import { Printer, X, MessageCircle, FileText, Receipt, FileSpreadsheet } from 'lucide-react'
+import { exportarReciboAExcel } from '../utils/exportExcel'
 
 export default function ReciboModal({ isOpen, onClose, data, consultorio }) {
   const [formato, setFormato] = useState('factura')
@@ -10,7 +11,7 @@ export default function ReciboModal({ isOpen, onClose, data, consultorio }) {
     nombre: 'CONSULTORIO ODONTOLÓGICO INTEGRAL, C.A.',
     rif_nit: 'J-12345678-0',
     telefono: '+58 412-000-00-00',
-    direccion: 'Av. Bolívar, Torre Médica Profesional, Piso 3, Of. 3-A, Caracas, Dtto. Capital',
+    direccion: 'Av. Bolívar, Torre Médica Profesional, Piso 3, Of. 3-A, Caracas',
     email: 'admin@consultorio.com',
     mensaje_recibo: 'Este documento es un comprobante de pago válido según las disposiciones del SENIAT.',
     contribuyente: 'CONTRIBUYENTE FORMAL'
@@ -39,14 +40,12 @@ export default function ReciboModal({ isOpen, onClose, data, consultorio }) {
     numero_control = id ? `00-${String(id).slice(0, 8).toUpperCase()}` : '00-00000001'
   } = data
 
-  // Cálculos fiscales SENIAT
   const baseImponible = Number(subtotal_usd || monto_usd)
   const iva = impuesto_usd > 0 ? Number(impuesto_usd) : baseImponible * 0.16
   const exento = 0
   const totalFactura = baseImponible + iva
   const totalBs = total_ves > 0 ? Number(total_ves) : totalFactura * Number(tasa_ves || 1)
 
-  // Convertir número a letras
   const numeroALetras = (num) => {
     const unidades = ['','UNO','DOS','TRES','CUATRO','CINCO','SEIS','SIETE','OCHO','NUEVE']
     const decenas = ['','DIEZ','VEINTE','TREINTA','CUARENTA','CINCUENTA','SESENTA','SETENTA','OCHENTA','NOVENTA']
@@ -77,14 +76,7 @@ export default function ReciboModal({ isOpen, onClose, data, consultorio }) {
         <title>Factura #${factura}</title>
         <style>
           * { box-sizing: border-box; margin: 0; padding: 0; }
-          body {
-            font-family: "Arial", "Helvetica", sans-serif;
-            color: #000;
-            background: #fff;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-          }
-
+          body { font-family: "Arial", sans-serif; color: #000; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           ${formato === 'ticket' ? `
             @page { size: 80mm auto; margin: 0; }
             body { width: 72mm; margin: 0 auto; padding: 8px 3px; font-size: 10px; font-family: monospace; }
@@ -97,89 +89,31 @@ export default function ReciboModal({ isOpen, onClose, data, consultorio }) {
           ` : `
             @page { size: letter portrait; margin: 10mm 12mm; }
             body { max-width: 210mm; margin: 0 auto; padding: 0; font-size: 11px; }
-
-            /* ENCABEZADO FISCAL */
-            .factura-header {
-              display: flex;
-              justify-content: space-between;
-              align-items: flex-start;
-              border: 2px solid #000;
-              padding: 12px 16px;
-              margin-bottom: 0;
-            }
+            .factura-header { display: flex; justify-content: space-between; align-items: flex-start; border: 2px solid #000; padding: 12px 16px; }
             .empresa-info h1 { font-size: 15px; font-weight: bold; margin-bottom: 2px; }
             .empresa-info p { font-size: 10px; color: #333; line-height: 1.4; }
-            .rif-box {
-              border: 2px solid #000;
-              padding: 8px 14px;
-              text-align: center;
-              min-width: 180px;
-            }
+            .rif-box { border: 2px solid #000; padding: 8px 14px; text-align: center; min-width: 180px; }
             .rif-box .label { font-size: 9px; font-weight: bold; text-transform: uppercase; }
             .rif-box .rif-num { font-size: 16px; font-weight: bold; margin: 2px 0; }
             .rif-box .doc-type { font-size: 11px; font-weight: bold; border-top: 1px solid #000; padding-top: 4px; margin-top: 4px; }
-
-            /* DATOS FACTURA */
-            .factura-datos {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              border: 2px solid #000;
-              border-top: none;
-            }
+            .factura-datos { display: grid; grid-template-columns: 1fr 1fr; border: 2px solid #000; border-top: none; }
             .factura-datos .col { padding: 8px 12px; }
             .factura-datos .col:first-child { border-right: 1px solid #000; }
             .dato-label { font-size: 9px; font-weight: bold; text-transform: uppercase; color: #555; }
             .dato-valor { font-size: 11px; font-weight: bold; }
             .dato-row { margin-bottom: 3px; }
-
-            /* TABLA ITEMS */
-            .tabla-items {
-              width: 100%;
-              border-collapse: collapse;
-              border: 2px solid #000;
-              border-top: none;
-              margin-top: 0;
-            }
-            .tabla-items th {
-              background: #000;
-              color: #fff;
-              font-size: 9px;
-              text-transform: uppercase;
-              padding: 6px 8px;
-              text-align: left;
-              font-weight: bold;
-            }
-            .tabla-items td {
-              padding: 8px;
-              border-bottom: 1px solid #ccc;
-              font-size: 11px;
-              vertical-align: top;
-            }
+            .tabla-items { width: 100%; border-collapse: collapse; border: 2px solid #000; border-top: none; }
+            .tabla-items th { background: #000; color: #fff; font-size: 9px; text-transform: uppercase; padding: 6px 8px; text-align: left; font-weight: bold; }
+            .tabla-items td { padding: 8px; border-bottom: 1px solid #ccc; font-size: 11px; }
             .tabla-items .text-right { text-align: right; }
             .tabla-items .text-center { text-align: center; }
-
-            /* RESUMEN FISCAL */
-            .resumen-fiscal {
-              display: flex;
-              justify-content: space-between;
-              border: 2px solid #000;
-              border-top: none;
-            }
+            .resumen-fiscal { display: flex; justify-content: space-between; border: 2px solid #000; border-top: none; }
             .resumen-izq { flex: 1; padding: 8px 12px; border-right: 1px solid #000; }
             .resumen-der { width: 280px; padding: 8px 12px; }
             .fiscal-row { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 2px; }
             .fiscal-total { font-size: 14px; font-weight: bold; border-top: 2px solid #000; padding-top: 4px; margin-top: 4px; }
             .monto-letras { font-size: 9px; font-style: italic; color: #333; margin-top: 4px; padding: 4px; background: #f5f5f5; border: 1px solid #ccc; }
-
-            /* PIE FISCAL */
-            .pie-fiscal {
-              border: 2px solid #000;
-              border-top: none;
-              padding: 8px 12px;
-              text-align: center;
-              font-size: 9px;
-              color: #333;
-            }
+            .pie-fiscal { border: 2px solid #000; border-top: none; padding: 8px 12px; text-align: center; font-size: 9px; color: #333; }
             .pie-fiscal .contribuyente { font-weight: bold; font-size: 10px; color: #000; }
           `}
         </style>
@@ -200,7 +134,7 @@ export default function ReciboModal({ isOpen, onClose, data, consultorio }) {
           <div class="row"><span>CLIENTE:</span><span>${paciente_nombre}</span></div>
           <div class="row"><span>RIF/CI:</span><span>${paciente_cedula}</span></div>
           <div class="sep"></div>
-          <div class="bold" style="margin-bottom:2px;">${procedimiento}</div>
+          <div class="bold">${procedimiento}</div>
           ${dientes_tratados ? `<div class="small">Dientes: ${dientes_tratados}</div>` : ''}
           <div class="sep"></div>
           <div class="row"><span>BASE IMP.:</span><span>$${baseImponible.toFixed(2)}</span></div>
@@ -213,10 +147,9 @@ export default function ReciboModal({ isOpen, onClose, data, consultorio }) {
           <div class="center small" style="margin-top:6px;">
             <div class="bold">${config.contribuyente}</div>
             <div>${config.mensaje_recibo}</div>
-            <div style="margin-top:4px;">*** GRACIAS POR SU PREFERENCIA ***</div>
+            <div style="margin-top:4px;">*** GRACIAS POR SU VISITA ***</div>
           </div>
         ` : `
-          <!-- ENCABEZADO FISCAL -->
           <div class="factura-header">
             <div class="empresa-info">
               <h1>🏥 ${config.nombre}</h1>
@@ -230,57 +163,27 @@ export default function ReciboModal({ isOpen, onClose, data, consultorio }) {
             </div>
           </div>
 
-          <!-- DATOS DE FACTURACIÓN -->
           <div class="factura-datos">
             <div class="col">
-              <div class="dato-row">
-                <span class="dato-label">Cliente / Paciente:</span>
-                <span class="dato-valor">${paciente_nombre}</span>
-              </div>
-              <div class="dato-row">
-                <span class="dato-label">RIF / C.I.:</span>
-                <span class="dato-valor">${paciente_cedula}</span>
-              </div>
-              <div class="dato-row">
-                <span class="dato-label">Dirección:</span>
-                <span class="dato-valor">${paciente_direccion || 'No especificada'}</span>
-              </div>
-              <div class="dato-row">
-                <span class="dato-label">Teléfono:</span>
-                <span class="dato-valor">${paciente_telefono || 'N/A'}</span>
-              </div>
+              <div class="dato-row"><span class="dato-label">Cliente / Paciente:</span> <span class="dato-valor">${paciente_nombre}</span></div>
+              <div class="dato-row"><span class="dato-label">RIF / C.I.:</span> <span class="dato-valor">${paciente_cedula}</span></div>
+              <div class="dato-row"><span class="dato-label">Dirección:</span> <span class="dato-valor">${paciente_direccion || 'No especificada'}</span></div>
+              <div class="dato-row"><span class="dato-label">Teléfono:</span> <span class="dato-valor">${paciente_telefono || 'N/A'}</span></div>
             </div>
             <div class="col">
-              <div class="dato-row">
-                <span class="dato-label">Nº Factura:</span>
-                <span class="dato-valor">${factura}</span>
-              </div>
-              <div class="dato-row">
-                <span class="dato-label">Nº Control:</span>
-                <span class="dato-valor">${numero_control}</span>
-              </div>
-              <div class="dato-row">
-                <span class="dato-label">Fecha Emisión:</span>
-                <span class="dato-valor">${fecha}</span>
-              </div>
-              <div class="dato-row">
-                <span class="dato-label">Profesional:</span>
-                <span class="dato-valor">${doctor_nombre}</span>
-              </div>
-              ${tasa_ves > 0 ? `
-              <div class="dato-row">
-                <span class="dato-label">Tasa BCV (Bs/USD):</span>
-                <span class="dato-valor">Bs. ${Number(tasa_ves).toFixed(2)}</span>
-              </div>` : ''}
+              <div class="dato-row"><span class="dato-label">Nº Factura:</span> <span class="dato-valor">${factura}</span></div>
+              <div class="dato-row"><span class="dato-label">Nº Control:</span> <span class="dato-valor">${numero_control}</span></div>
+              <div class="dato-row"><span class="dato-label">Fecha Emisión:</span> <span class="dato-valor">${fecha}</span></div>
+              <div class="dato-row"><span class="dato-label">Profesional:</span> <span class="dato-valor">${doctor_nombre}</span></div>
+              ${tasa_ves > 0 ? `<div class="dato-row"><span class="dato-label">Tasa BCV (Bs/USD):</span> <span class="dato-valor">Bs. ${Number(tasa_ves).toFixed(2)}</span></div>` : ''}
             </div>
           </div>
 
-          <!-- TABLA DE SERVICIOS -->
           <table class="tabla-items">
             <thead>
               <tr>
                 <th style="width:40px;">Cant.</th>
-                <th>Descripción del Servicio Médico / Odontológico</th>
+                <th>Descripción del Servicio</th>
                 <th style="width:80px;" class="text-center">Piezas</th>
                 <th style="width:100px;" class="text-right">P. Unit. USD</th>
                 <th style="width:100px;" class="text-right">Total USD</th>
@@ -289,71 +192,35 @@ export default function ReciboModal({ isOpen, onClose, data, consultorio }) {
             <tbody>
               <tr>
                 <td class="text-center">1</td>
-                <td>
-                  <strong>${procedimiento}</strong>
-                  ${diagnostico ? `<br><span style="font-size:10px;color:#555;">Dx: ${diagnostico}</span>` : ''}
-                </td>
+                <td><strong>${procedimiento}</strong>${diagnostico ? `<br><span style="font-size:10px;color:#555;">Dx: ${diagnostico}</span>` : ''}</td>
                 <td class="text-center" style="font-family:monospace;">${dientes_tratados || '—'}</td>
                 <td class="text-right">$${baseImponible.toFixed(2)}</td>
                 <td class="text-right"><strong>$${baseImponible.toFixed(2)}</strong></td>
               </tr>
-              <tr>
-                <td colspan="5" style="height:40px;border:none;"></td>
-              </tr>
+              <tr><td colspan="5" style="height:40px;border:none;"></td></tr>
             </tbody>
           </table>
 
-          <!-- RESUMEN FISCAL -->
           <div class="resumen-fiscal">
             <div class="resumen-izq">
-              <div class="monto-letras">
-                <strong>SON:</strong> ${montoLetras}
-              </div>
-              <div style="margin-top:6px;">
-                <span class="dato-label">Forma de Pago:</span>
-                <span class="dato-valor">${metodo_pago.toUpperCase()}</span>
-              </div>
+              <div class="monto-letras"><strong>SON:</strong> ${montoLetras}</div>
+              <div style="margin-top:6px;"><span class="dato-label">Forma de Pago:</span> <span class="dato-valor">${metodo_pago.toUpperCase()}</span></div>
             </div>
             <div class="resumen-der">
-              <div class="fiscal-row">
-                <span>Base Imponible:</span>
-                <span>$${baseImponible.toFixed(2)}</span>
-              </div>
-              <div class="fiscal-row">
-                <span>Exento / Exonerado:</span>
-                <span>$${exento.toFixed(2)}</span>
-              </div>
-              <div class="fiscal-row">
-                <span>Sub-Total:</span>
-                <span>$${baseImponible.toFixed(2)}</span>
-              </div>
-              <div class="fiscal-row">
-                <span>I.V.A. (16%):</span>
-                <span>$${iva.toFixed(2)}</span>
-              </div>
-              <div class="fiscal-row fiscal-total">
-                <span>TOTAL A PAGAR (USD):</span>
-                <span>$${totalFactura.toFixed(2)}</span>
-              </div>
-              ${totalBs > 0 ? `
-              <div class="fiscal-row" style="font-weight:bold;color:#333;">
-                <span>TOTAL (Bs.):</span>
-                <span>Bs. ${totalBs.toLocaleString('es-VE', {minimumFractionDigits:2})}</span>
-              </div>` : ''}
-              ${total_cop > 0 ? `
-              <div class="fiscal-row" style="color:#555;">
-                <span>Ref. COP:</span>
-                <span>$ ${Number(total_cop).toLocaleString('es-CO')}</span>
-              </div>` : ''}
+              <div class="fiscal-row"><span>Base Imponible:</span><span>$${baseImponible.toFixed(2)}</span></div>
+              <div class="fiscal-row"><span>Exento / Exonerado:</span><span>$${exento.toFixed(2)}</span></div>
+              <div class="fiscal-row"><span>Sub-Total:</span><span>$${baseImponible.toFixed(2)}</span></div>
+              <div class="fiscal-row"><span>I.V.A. (16%):</span><span>$${iva.toFixed(2)}</span></div>
+              <div class="fiscal-row fiscal-total"><span>TOTAL FACTURA (USD):</span><span>$${totalFactura.toFixed(2)}</span></div>
+              ${totalBs > 0 ? `<div class="fiscal-row" style="font-weight:bold;"><span>TOTAL (Bs.):</span><span>Bs. ${totalBs.toLocaleString('es-VE', {minimumFractionDigits:2})}</span></div>` : ''}
+              ${total_cop > 0 ? `<div class="fiscal-row" style="color:#555;"><span>Ref. COP:</span><span>$ ${Number(total_cop).toLocaleString('es-CO')}</span></div>` : ''}
             </div>
           </div>
 
-          <!-- PIE FISCAL OBLIGATORIO -->
           <div class="pie-fiscal">
             <div class="contribuyente">${config.contribuyente}</div>
             <div style="margin-top:3px;">${config.mensaje_recibo}</div>
-            <div style="margin-top:2px;">Impreso conforme a la Providencia Administrativa N° 0071 del SENIAT.</div>
-            <div style="margin-top:2px;">Este documento no es negociable. Conserve su copia.</div>
+            <div style="margin-top:2px;">Providencia Administrativa N° 0071 del SENIAT.</div>
           </div>
         `}
       </body>
@@ -364,6 +231,10 @@ export default function ReciboModal({ isOpen, onClose, data, consultorio }) {
     printWindow.document.write(html)
     printWindow.document.close()
     printWindow.onload = () => { printWindow.focus(); printWindow.print() }
+  }
+
+  const handleExcel = () => {
+    exportarReciboAExcel(data, config)
   }
 
   const handleWhatsApp = () => {
@@ -386,6 +257,8 @@ export default function ReciboModal({ isOpen, onClose, data, consultorio }) {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+        
+        {/* Barra superior con botón de Excel */}
         <div className="p-4 bg-gray-50 border-b flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center bg-gray-200 p-1 rounded-xl text-xs font-semibold">
             <button onClick={() => setFormato('factura')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${formato === 'factura' ? 'bg-white shadow-sm text-blue-600 font-bold' : 'text-gray-500'}`}>
@@ -395,7 +268,11 @@ export default function ReciboModal({ isOpen, onClose, data, consultorio }) {
               <Receipt className="w-3.5 h-3.5" /> Ticket 80mm
             </button>
           </div>
+
           <div className="flex items-center gap-2">
+            <button onClick={handleExcel} className="bg-green-700 hover:bg-green-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg inline-flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer" title="Descargar en Excel .xlsx">
+              <FileSpreadsheet className="w-4 h-4" /> Excel (.xlsx)
+            </button>
             {paciente_telefono && (
               <button onClick={handleWhatsApp} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg inline-flex items-center gap-1.5">
                 <MessageCircle className="w-4 h-4" /> WhatsApp
