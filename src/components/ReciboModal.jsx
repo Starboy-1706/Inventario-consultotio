@@ -36,144 +36,231 @@ export default function ReciboModal({ isOpen, onClose, data, consultorio }) {
     factura = id ? `REC-${String(id).slice(0, 8).toUpperCase()}` : 'REC-00001'
   } = data
 
-  // Función de impresión infalible usando iframe invisible
+  // GENERADOR DE IMPRESIÓN DIRECTA E INDEPENDIENTE
   const handlePrint = () => {
-    const targetId = formato === 'carta' ? 'area-recibo' : 'area-recibo-ticket'
-    const element = document.getElementById(targetId)
-    if (!element) return
+    const printWindow = window.open('', '_blank', 'width=850,height=900')
+    if (!printWindow) {
+      alert('Por favor permite las ventanas emergentes (pop-ups) para imprimir el recibo.')
+      return
+    }
 
-    const iframe = document.createElement('iframe')
-    iframe.style.position = 'fixed'
-    iframe.style.right = '0'
-    iframe.style.bottom = '0'
-    iframe.style.width = '0'
-    iframe.style.height = '0'
-    iframe.style.border = '0'
-    document.body.appendChild(iframe)
-
-    const doc = iframe.contentWindow.document
-    doc.open()
-    doc.write(`
+    const htmlContent = `
       <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Recibo - #${factura}</title>
-          <style>
-            * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-            body { background: #fff; color: #111827; }
-            ${formato === 'ticket' ? `
-              @page { size: 80mm auto; margin: 0; }
-              body { width: 72mm; margin: 0 auto; padding: 12px 4px; font-family: monospace; font-size: 11px; }
-            ` : `
-              @page { size: letter portrait; margin: 12mm; }
-              body { max-width: 800px; margin: 0 auto; padding: 10px; }
-            `}
-            .flex { display: flex; }
-            .justify-between { justify-content: space-between; }
-            .items-center { align-items: center; }
-            .items-start { align-items: flex-start; }
-            .text-right { text-align: right; }
-            .text-center { text-align: center; }
-            .font-bold { font-weight: bold; }
-            .font-semibold { font-weight: 600; }
-            .font-mono { font-family: monospace; }
-            .text-xs { font-size: 11px; }
-            .text-sm { font-size: 13px; }
-            .text-base { font-size: 15px; }
-            .text-lg { font-size: 17px; }
-            .text-xl { font-size: 20px; }
-            .text-2xl { font-size: 24px; }
-            .text-gray-400 { color: #9ca3af; }
-            .text-gray-500 { color: #6b7280; }
-            .text-gray-600 { color: #4b5563; }
-            .text-gray-700 { color: #374151; }
-            .text-gray-800 { color: #1f2937; }
-            .text-gray-900 { color: #111827; }
-            .text-blue-600 { color: #2563eb; }
-            .text-blue-700 { color: #1d4ed8; }
-            .text-emerald-600 { color: #059669; }
-            .bg-gray-50 { background-color: #f9fafb; }
-            .bg-gray-100 { background-color: #f3f4f6; }
-            .bg-blue-50 { background-color: #eff6ff; }
-            .p-1\\.5 { padding: 6px; }
-            .p-3 { padding: 10px 12px; }
-            .p-4 { padding: 14px; }
-            .p-6 { padding: 20px; }
-            .p-8 { padding: 28px; }
-            .py-2 { padding-top: 8px; padding-bottom: 8px; }
-            .py-2\\.5 { padding-top: 10px; padding-bottom: 10px; }
-            .pb-3 { padding-bottom: 12px; }
-            .pb-6 { padding-bottom: 20px; }
-            .pt-2 { padding-top: 8px; }
-            .pt-3 { padding-top: 12px; }
-            .pt-4 { padding-top: 16px; }
-            .mt-0\\.5 { margin-top: 2px; }
-            .mt-1 { margin-top: 4px; }
-            .mt-2 { margin-top: 8px; }
-            .mt-4 { margin-top: 16px; }
-            .mt-8 { margin-top: 28px; }
-            .mb-1 { margin-bottom: 4px; }
-            .mb-2 { margin-bottom: 8px; }
-            .my-6 { margin-top: 20px; margin-bottom: 20px; }
-            .border { border: 1px solid #e5e7eb; }
-            .border-b { border-bottom: 1px solid #e5e7eb; }
-            .border-b-2 { border-bottom: 2px solid #2563eb; }
-            .border-t { border-top: 1px solid #e5e7eb; }
-            .border-dashed { border-style: dashed; }
-            .border-gray-100 { border-color: #f3f4f6; }
-            .border-gray-200 { border-color: #e5e7eb; }
-            .border-gray-300 { border-color: #d1d5db; }
-            .border-blue-200 { border-color: #bfdbfe; }
-            .border-blue-600 { border-color: #2563eb; }
-            .rounded { border-radius: 4px; }
-            .rounded-lg { border-radius: 8px; }
-            .rounded-xl { border-radius: 12px; }
-            .rounded-full { border-radius: 9999px; }
-            .grid { display: grid; }
-            .grid-cols-2 { grid-template-columns: 1fr 1fr; }
-            .gap-6 { gap: 24px; }
-            .w-full { width: 100%; }
-            .w-64 { width: 240px; }
-            .uppercase { text-transform: uppercase; }
-            .tracking-wider { letter-spacing: 0.05em; }
-            .tracking-tight { letter-spacing: -0.025em; }
-            .space-y-1 > * + * { margin-top: 4px; }
-            .space-y-1\\.5 > * + * { margin-top: 6px; }
-            .space-y-2 > * + * { margin-top: 8px; }
-            table { width: 100%; border-collapse: collapse; }
-            th { background-color: #f9fafb; font-size: 11px; text-transform: uppercase; color: #4b5563; font-weight: bold; border-bottom: 1px solid #e5e7eb; }
-            td { border-bottom: 1px solid #e5e7eb; }
-          </style>
-        </head>
-        <body>
-          ${element.innerHTML}
-        </body>
-      </html>
-    `)
-    doc.close()
+      <html lang="es">
+      <head>
+        <meta charset="UTF-8">
+        <title>Recibo #${factura}</title>
+        <style>
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #1f2937;
+            background: #ffffff;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
 
-    setTimeout(() => {
-      iframe.contentWindow.focus()
-      iframe.contentWindow.print()
-      setTimeout(() => {
-        if (document.body.contains(iframe)) {
-          document.body.removeChild(iframe)
-        }
-      }, 2000)
-    }, 250)
+          ${formato === 'ticket' ? `
+            /* ESTILOS TICKET 80MM */
+            @page { size: 80mm auto; margin: 0; }
+            body { width: 72mm; margin: 0 auto; padding: 10px 4px; font-family: monospace; font-size: 11px; }
+            .ticket-header { text-align: center; border-bottom: 1px dashed #9ca3af; padding-bottom: 8px; margin-bottom: 8px; }
+            .ticket-title { font-size: 13px; font-weight: bold; text-transform: uppercase; }
+            .ticket-row { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 11px; }
+            .ticket-total { font-size: 14px; font-weight: bold; border-top: 1px dashed #9ca3af; border-bottom: 1px dashed #9ca3af; padding: 6px 0; margin: 8px 0; }
+            .ticket-footer { text-align: center; font-size: 10px; color: #4b5563; margin-top: 12px; }
+          ` : `
+            /* ESTILOS CARTA / A4 */
+            @page { size: letter portrait; margin: 15mm; }
+            body { max-width: 800px; margin: 0 auto; padding: 20px; font-size: 13px; }
+            .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #2563eb; padding-bottom: 16px; margin-bottom: 20px; }
+            .clinic-name { font-size: 20px; font-weight: bold; color: #111827; }
+            .doc-tag { background: #eff6ff; color: #1d4ed8; font-weight: bold; font-size: 11px; text-transform: uppercase; padding: 4px 10px; border-radius: 9999px; border: 1px solid #bfdbfe; display: inline-block; margin-bottom: 6px; }
+            .info-box { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px; margin-bottom: 20px; }
+            .info-title { font-size: 10px; font-weight: bold; text-transform: uppercase; color: #6b7280; margin-bottom: 2px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
+            th { background: #f3f4f6; color: #374151; font-size: 11px; text-transform: uppercase; padding: 10px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+            td { padding: 12px 10px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+            .totals-container { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; border-top: 1px solid #e5e7eb; padding-top: 14px; }
+            .total-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
+            .total-usd { font-size: 16px; font-weight: bold; color: #1d4ed8; border-top: 1px solid #e5e7eb; padding-top: 6px; margin-top: 6px; }
+            .alt-currency { background: #f9fafb; padding: 6px 8px; border-radius: 6px; margin-top: 4px; font-weight: 600; font-size: 11px; color: #374151; }
+            .footer { text-align: center; font-size: 11px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 30px; }
+          `}
+        </style>
+      </head>
+      <body>
+        ${formato === 'ticket' ? `
+          <!-- CONTENIDO TICKET -->
+          <div class="ticket-header">
+            <div class="ticket-title">${config.nombre}</div>
+            <div>RIF: ${config.rif_nit}</div>
+            <div>${config.direccion}</div>
+            <div>Tel: ${config.telefono}</div>
+          </div>
+
+          <div style="border-bottom: 1px dashed #9ca3af; padding-bottom: 6px; margin-bottom: 6px;">
+            <div class="ticket-row"><span>RECIBO:</span><strong>#${factura}</strong></div>
+            <div class="ticket-row"><span>FECHA:</span><span>${fecha}</span></div>
+            <div class="ticket-row"><span>PACIENTE:</span><span>${paciente_nombre}</span></div>
+            <div class="ticket-row"><span>C.I./DOC:</span><span>${paciente_cedula}</span></div>
+            <div class="ticket-row"><span>MÉDICO:</span><span>${doctor_nombre}</span></div>
+          </div>
+
+          <div style="margin-bottom: 6px;">
+            <div style="font-weight: bold; margin-bottom: 2px;">${procedimiento}</div>
+            ${dientes_tratados ? `<div>Dientes: ${dientes_tratados}</div>` : ''}
+          </div>
+
+          <div class="ticket-total">
+            <div class="ticket-row" style="font-size: 13px;">
+              <span>TOTAL USD:</span>
+              <span>$${Number(monto_usd).toFixed(2)}</span>
+            </div>
+            ${total_ves > 0 ? `
+              <div class="ticket-row" style="font-size: 11px; font-weight: normal; margin-top: 3px;">
+                <span>TOTAL BS:</span>
+                <span>Bs. ${Number(total_ves).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</span>
+              </div>
+            ` : ''}
+            ${total_cop > 0 ? `
+              <div class="ticket-row" style="font-size: 11px; font-weight: normal;">
+                <span>TOTAL COP:</span>
+                <span>$ ${Number(total_cop).toLocaleString('es-CO')}</span>
+              </div>
+            ` : ''}
+          </div>
+
+          <div class="ticket-row" style="margin-bottom: 8px;">
+            <span>PAGO:</span>
+            <span>${metodo_pago.toUpperCase()}</span>
+          </div>
+
+          <div class="ticket-footer">
+            <div>${config.mensaje_recibo}</div>
+            <div style="margin-top: 4px;">*** GRACIAS POR SU VISITA ***</div>
+          </div>
+        ` : `
+          <!-- CONTENIDO CARTA -->
+          <div class="header">
+            <div>
+              <div class="clinic-name">🏥 ${config.nombre}</div>
+              <div style="font-size: 12px; color: #6b7280; margin-top: 3px;">RIF / NIT: ${config.rif_nit}</div>
+              <div style="font-size: 12px; color: #6b7280;">${config.direccion}</div>
+              <div style="font-size: 12px; color: #6b7280;">Tel: ${config.telefono} | ${config.email}</div>
+            </div>
+            <div style="text-align: right;">
+              <div class="doc-tag">Comprobante de Pago</div>
+              <div style="font-size: 17px; font-weight: bold; font-family: monospace;">#${factura}</div>
+              <div style="font-size: 12px; color: #6b7280; margin-top: 2px;">Fecha: ${fecha}</div>
+            </div>
+          </div>
+
+          <div class="info-box">
+            <div>
+              <div class="info-title">Paciente</div>
+              <div style="font-size: 14px; font-weight: bold; color: #111827;">${paciente_nombre}</div>
+              <div style="color: #4b5563;">Doc / Cédula: ${paciente_cedula}</div>
+              ${paciente_telefono ? `<div style="color: #4b5563;">Tel: ${paciente_telefono}</div>` : ''}
+            </div>
+            <div style="text-align: right;">
+              <div class="info-title">Profesional Tratante</div>
+              <div style="font-size: 14px; font-weight: bold; color: #111827;">${doctor_nombre}</div>
+              <div style="color: #059669; font-weight: 600; margin-top: 2px;">✓ Pago Verificado</div>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Descripción / Tratamiento</th>
+                <th style="text-align: center; width: 140px;">Piezas / Dientes</th>
+                <th style="text-align: right; width: 140px;">Monto USD</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div style="font-weight: 600; color: #111827;">${procedimiento}</div>
+                  ${diagnostico ? `<div style="font-size: 11px; color: #6b7280; margin-top: 2px;">${diagnostico}</div>` : ''}
+                </td>
+                <td style="text-align: center; font-family: monospace; color: #4b5563;">
+                  ${dientes_tratados || '—'}
+                </td>
+                <td style="text-align: right; font-weight: bold; color: #111827;">
+                  $${Number(subtotal_usd || monto_usd).toFixed(2)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="totals-container">
+            <div style="font-size: 12px; color: #4b5563; max-width: 320px;">
+              <div><strong>Método de Pago:</strong> ${metodo_pago}</div>
+              ${tasa_ves > 0 ? `<div><strong>Tasa VES:</strong> Bs. ${Number(tasa_ves).toFixed(2)}</div>` : ''}
+              ${tasa_cop > 0 ? `<div><strong>Tasa COP:</strong> $ ${Number(tasa_cop).toFixed(2)}</div>` : ''}
+            </div>
+            <div style="width: 260px;">
+              <div class="total-row">
+                <span style="color: #6b7280;">Subtotal:</span>
+                <span>$${Number(subtotal_usd || monto_usd).toFixed(2)}</span>
+              </div>
+              ${impuesto_usd > 0 ? `
+                <div class="total-row">
+                  <span style="color: #6b7280;">Impuesto:</span>
+                  <span>$${Number(impuesto_usd).toFixed(2)}</span>
+                </div>
+              ` : ''}
+              <div class="total-row total-usd">
+                <span>TOTAL USD:</span>
+                <span>$${Number(monto_usd).toFixed(2)}</span>
+              </div>
+              ${total_ves > 0 ? `
+                <div class="total-row alt-currency">
+                  <span>Equivalente VES:</span>
+                  <span>Bs. ${Number(total_ves).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</span>
+                </div>
+              ` : ''}
+              ${total_cop > 0 ? `
+                <div class="total-row alt-currency">
+                  <span>Equivalente COP:</span>
+                  <span>$ ${Number(total_cop).toLocaleString('es-CO')}</span>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+
+          <div class="footer">
+            <div style="font-weight: 500; color: #4b5563;">${config.mensaje_recibo}</div>
+            <div style="font-size: 10px; margin-top: 4px;">Comprobante de atención médica generado electrónicamente.</div>
+          </div>
+        `}
+      </body>
+      </html>
+    `
+
+    printWindow.document.open()
+    printWindow.document.write(htmlContent)
+    printWindow.document.close()
+
+    // Ejecutar impresión automática al cargar la ventana
+    printWindow.onload = () => {
+      printWindow.focus()
+      printWindow.print()
+    }
   }
 
   const handleWhatsApp = () => {
     const phone = String(paciente_telefono).replace(/[^0-9]/g, '')
-    const mensaje = `Hola *${paciente_nombre}*, le compartimos su comprobante de *${config.nombre}*:%0A%0A` +
-      `🧾 *Recibo:* #${factura}%0A` +
+    const mensaje = `Hola *${paciente_nombre}*, le compartimos su recibo médico de *${config.nombre}*:%0A%0A` +
+      `🧾 *Comprobante:* #${factura}%0A` +
       `📅 *Fecha:* ${fecha}%0A` +
       `🩺 *Tratamiento:* ${procedimiento}%0A` +
       (dientes_tratados ? `🦷 *Dientes:* ${dientes_tratados}%0A` : '') +
       `💵 *Monto Total:* $${Number(monto_usd).toFixed(2)} USD` +
       (total_ves > 0 ? ` (Bs. ${Number(total_ves).toLocaleString('es-VE')})` : '') +
       (total_cop > 0 ? ` ($ ${Number(total_cop).toLocaleString('es-CO')} COP)` : '') + `%0A` +
-      `💳 *Pago:* ${metodo_pago}%0A%0A` +
+      `💳 *Forma de Pago:* ${metodo_pago}%0A%0A` +
       `_${config.mensaje_recibo}_`
 
     window.open(`https://wa.me/${phone}?text=${mensaje}`, '_blank')
@@ -183,7 +270,7 @@ export default function ReciboModal({ isOpen, onClose, data, consultorio }) {
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white dark:bg-gray-800 w-full max-w-2xl rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
         
-        {/* Controles superiores */}
+        {/* Barra superior de controles */}
         <div className="p-4 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center bg-gray-200 dark:bg-gray-700 p-1 rounded-xl text-xs font-semibold">
             <button
@@ -215,9 +302,9 @@ export default function ReciboModal({ isOpen, onClose, data, consultorio }) {
             )}
             <button
               onClick={handlePrint}
-              className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-4 py-1.5 rounded-lg inline-flex items-center gap-1.5 transition-colors shadow-sm font-bold"
+              className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-1.5 rounded-lg inline-flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
             >
-              <Printer className="w-4 h-4" /> Imprimir
+              <Printer className="w-4 h-4" /> Imprimir Recibo
             </button>
             <button
               onClick={onClose}
@@ -228,9 +315,9 @@ export default function ReciboModal({ isOpen, onClose, data, consultorio }) {
           </div>
         </div>
 
-        {/* FORMATO CARTA / FACTURA */}
+        {/* Vista previa en pantalla (Formato Carta) */}
         {formato === 'carta' && (
-          <div id="area-recibo" className="p-8 bg-white text-gray-800 font-sans">
+          <div className="p-8 bg-white text-gray-800 font-sans max-h-[75vh] overflow-y-auto">
             <div className="flex justify-between items-start border-b-2 border-blue-600 pb-6">
               <div>
                 <div className="flex items-center gap-2">
@@ -258,7 +345,7 @@ export default function ReciboModal({ isOpen, onClose, data, consultorio }) {
                 {paciente_telefono && <p className="text-xs text-gray-600">Tel: {paciente_telefono}</p>}
               </div>
               <div className="text-right">
-                <p className="text-xs font-semibold text-gray-400 uppercase">Profesional Tratante</p>
+                <p className="text-xs font-semibold text-gray-400 uppercase">Profesional</p>
                 <p className="text-sm font-bold text-gray-900">{doctor_nombre}</p>
                 <p className="text-xs text-emerald-600 font-medium flex items-center justify-end gap-1 mt-0.5">
                   <CheckCircle className="w-3.5 h-3.5" /> Pago Verificado
@@ -313,16 +400,12 @@ export default function ReciboModal({ isOpen, onClose, data, consultorio }) {
                 )}
               </div>
             </div>
-
-            <div className="mt-8 pt-4 border-t border-gray-200 text-center text-xs text-gray-400">
-              <p className="font-medium text-gray-600">{config.mensaje_recibo}</p>
-            </div>
           </div>
         )}
 
-        {/* FORMATO TICKET TÉRMICO */}
+        {/* Vista previa en pantalla (Formato Ticket) */}
         {formato === 'ticket' && (
-          <div id="area-recibo-ticket" className="p-6 bg-white text-gray-900 font-mono text-xs max-w-[340px] mx-auto border-x border-dashed border-gray-300">
+          <div className="p-6 bg-white text-gray-900 font-mono text-xs max-w-[340px] mx-auto border-x border-dashed border-gray-300 my-4 max-h-[75vh] overflow-y-auto">
             <div className="text-center space-y-1 border-b border-dashed border-gray-300 pb-3">
               <h2 className="text-sm font-black uppercase">{config.nombre}</h2>
               <p className="text-[11px] text-gray-600">RIF: {config.rif_nit}</p>

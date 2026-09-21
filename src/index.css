@@ -3,44 +3,11 @@
 @tailwind utilities;
 
 @layer components {
-  .btn-primary { @apply bg-teal-600 hover:bg-teal-700 active:scale-95 text-white font-medium px-4 py-2 rounded-xl flex items-center justify-center gap-2 text-sm shadow-sm transition-all disabled:opacity-50; }
-  .btn-secondary { @apply bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-medium px-4 py-2 rounded-xl flex items-center justify-center gap-2 text-sm transition-all; }
-  .btn-danger { @apply bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-600 font-medium px-3 py-1.5 rounded-xl flex items-center gap-1.5 text-xs transition-all; }
-  .input-field { @apply w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none text-sm transition-all; }
-  .card-box { @apply bg-white rounded-2xl border border-slate-100 p-5 shadow-sm; }
-  .badge { @apply text-xs font-semibold px-2.5 py-0.5 rounded-full inline-flex items-center gap-1; }
-}
-
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #f1f5f9; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
-
-/* ESTILOS EXCLUSIVOS PARA IMPRESIÓN LIMPIA DE RECIBOS */
-@media print {
-  body * {
-    visibility: hidden;
-  }
-  #area-recibo, #area-recibo *,
-  #area-recibo-ticket, #area-recibo-ticket * {
-    visibility: visible;
-  }
-  #area-recibo, #area-recibo-ticket {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    margin: 0;
-    padding: 0;
-    background: white !important;
-    color: black !important;
-  }
-}
-
-@media print {
-  body * { visibility: hidden; }
-  #area-recibo, #area-recibo *,
-  #area-recibo-ticket, #area-recibo-ticket * { visibility: visible; }
-  #area-recibo, #area-recibo-ticket {
-    position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; background: white !important; color: black !important;
-  }
+  .btn-primary { @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-all inline-flex items-center gap-2 disabled:opacity-50; }
+  .btn-outline { @apply border border-gray-300 hover:bg-gray-100 text-gray-700 font-medium py-2 px-4 rounded-lg transition-all inline-flex items-center gap-2; }
+  .input-field { @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white; }
+  .card { @apply bg-white rounded-xl shadow-sm border border-gray-200 p-6; }
+  .badge-red { @apply bg-red-100 text-red-800 px-2 py-0.5 rounded-full text-xs font-semibold; }
+  .badge-green { @apply bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-xs font-semibold; }
+  .badge-yellow { @apply bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full text-xs font-semibold; }
 }
