@@ -6,7 +6,7 @@ import PriceBox from '../UI/PriceBox'
 import Odontograma from './Odontograma'
 import {
   Plus, FileText, CheckCircle2, Clock, Search, User, Save,
-  X, Printer, Receipt, DollarSign, Package, AlertCircle
+  X, Printer, Receipt, DollarSign, Package, AlertCircle, Edit3, Trash2
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -20,6 +20,7 @@ export default function Historial() {
   const [q, setQ] = useState('')
   const [dientesSel, setDientesSel] = useState([])
   const [ticketClinico, setTicketClinico] = useState(null)
+  const [editId, setEditId] = useState(null)
 
   const [form, setForm] = useState({
     paciente_id: '',
@@ -47,7 +48,6 @@ export default function Historial() {
 
   useEffect(() => { load() }, [])
 
-  // Al seleccionar un tratamiento del catálogo, carga automáticamente el precio y nombre
   const seleccionarTratamiento = (id) => {
     const t = trats.find(x => x.id === id)
     if (t) {
@@ -60,6 +60,34 @@ export default function Historial() {
     }
   }
 
+  const startEdit = (h) => {
+    setForm({
+      paciente_id: h.paciente_id || '',
+      tratamiento_id: h.tratamiento_id || '',
+      diagnostico: h.diagnostico || '',
+      procedimiento: h.procedimiento || '',
+      monto_usd: Number(h.subtotal_usd || h.monto_usd || 0),
+      impuesto_id: h.impuesto_id || '',
+      pagado: h.pagado !== false,
+      metodo_pago: h.metodo_pago || 'efectivo_usd'
+    })
+    setDientesSel(h.dientes_tratados ? h.dientes_tratados.split(',').map(d => d.trim()).filter(Boolean) : [])
+    setEditId(h.id)
+    setShowForm(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const eliminarConsulta = async (id, factura) => {
+    if (!confirm(`¿Estás seguro de que deseas eliminar permanentemente el registro clínico ${factura}?`)) return
+    const { error } = await supabase.from('historial_clinico').delete().eq('id', id)
+    if (error) {
+      toast.error('Error al eliminar registro clínico')
+    } else {
+      toast.success(`Registro ${factura} eliminado`)
+      load()
+    }
+  }
+
   const selectedTax = taxes.find(t => t.id === form.impuesto_id)
   const taxPct = selectedTax ? selectedTax.porcentaje : 0
   const subtotalUSD = Number(form.monto_usd || 0)
@@ -68,12 +96,19 @@ export default function Historial() {
 
   const save = async (e) => {
     e.preventDefault()
-    const fac = `CONS-${Date.now().toString().slice(-6)}`
+    const fac = editId ? list.find(x => x.id === editId)?.factura : `CONS-${Date.now().toString().slice(-6)}`
 
+    // Limpieza de UUIDs vacíos para evitar error 400/22P02
     const payload = {
-      ...form,
+      paciente_id: form.paciente_id || null,
+      tratamiento_id: form.tratamiento_id || null,
+      impuesto_id: form.impuesto_id || null,
+      diagnostico: form.diagnostico || null,
+      procedimiento: form.procedimiento,
+      pagado: form.pagado,
+      metodo_pago: form.metodo_pago,
       factura: fac,
-      dientes_tratados: dientesSel.join(', '),
+      dientes_tratados: dientesSel.join(', ') || null,
       subtotal_usd: subtotalUSD,
       impuesto_usd: taxUSD,
       monto_usd: totalUSD,
@@ -83,35 +118,43 @@ export default function Historial() {
       tasa_cop: rates.COP
     }
 
-    const { data: nuevaConsulta, error } = await supabase.from('historial_clinico').insert([payload]).select().single()
+    let error;
+    if (editId) {
+      const { error: err } = await supabase.from('historial_clinico').update(payload).eq('id', editId)
+      error = err
+    } else {
+      const { data: nuevaConsulta, error: err } = await supabase.from('historial_clinico').insert([payload]).select().single()
+      error = err
 
-    if (error) return toast.error('Error al guardar consulta')
-
-    // Descontar automáticamente insumos si el tratamiento tenía insumos vinculados
-    if (form.tratamiento_id) {
-      const { data: insumosVinculados } = await supabase.from('tratamiento_insumos').select('*').eq('tratamiento_id', form.tratamiento_id)
-      if (insumosVinculados && insumosVinculados.length > 0) {
-        for (const item of insumosVinculados) {
-          const prodActual = prods.find(p => p.id === item.producto_id)
-          if (prodActual) {
-            const nuevoStock = Math.max(0, prodActual.stock - item.cantidad)
-            await supabase.from('productos').update({ stock: nuevoStock }).eq('id', item.producto_id)
-            await supabase.from('movimientos').insert({
-              producto_id: item.producto_id,
-              tipo: 'uso_consultorio',
-              cantidad: -item.cantidad,
-              stock_antes: prodActual.stock,
-              stock_despues: nuevoStock,
-              referencia: `Consulta: ${fac} (${form.procedimiento})`
-            })
+      // Descontar automáticamente insumos si el tratamiento tenía insumos vinculados (solo en inserciones nuevas)
+      if (!error && form.tratamiento_id) {
+        const { data: insumosVinculados } = await supabase.from('tratamiento_insumos').select('*').eq('tratamiento_id', form.tratamiento_id)
+        if (insumosVinculados && insumosVinculados.length > 0) {
+          for (const item of insumosVinculados) {
+            const prodActual = prods.find(p => p.id === item.producto_id)
+            if (prodActual) {
+              const nuevoStock = Math.max(0, prodActual.stock - item.cantidad)
+              await supabase.from('productos').update({ stock: nuevoStock }).eq('id', item.producto_id)
+              await supabase.from('movimientos').insert({
+                producto_id: item.producto_id,
+                tipo: 'uso_consultorio',
+                cantidad: -item.cantidad,
+                stock_antes: prodActual.stock,
+                stock_despues: nuevoStock,
+                referencia: `Consulta: ${fac} (${form.procedimiento})`
+              })
+            }
           }
         }
       }
     }
 
-    toast.success(`Consulta ${fac} registrada y cobrada`)
+    if (error) return toast.error('Error al guardar consulta')
+
+    toast.success(`Consulta ${fac} ${editId ? 'actualizada' : 'registrada y cobrada'}`)
     setTicketClinico({ ...payload, paciente: pacs.find(p => p.id === form.paciente_id) })
     setShowForm(false)
+    setEditId(null)
     setDientesSel([])
     setForm({ paciente_id: '', tratamiento_id: '', diagnostico: '', procedimiento: '', monto_usd: 0, impuesto_id: '', pagado: true, metodo_pago: 'efectivo_usd' })
     load()
@@ -133,16 +176,15 @@ export default function Historial() {
           <h1 className="text-xl font-bold text-slate-800">Historial Clínico & Cobros</h1>
           <p className="text-xs text-slate-400">Consultas realizadas, emisión de recibos y registro odontológico</p>
         </div>
-        <button onClick={() => setShowForm(!showForm)} className={showForm ? 'btn-secondary' : 'btn-primary'}>
+        <button onClick={() => { setShowForm(!showForm); setEditId(null); setDientesSel([]); setForm({ paciente_id: '', tratamiento_id: '', diagnostico: '', procedimiento: '', monto_usd: 0, impuesto_id: '', pagado: true, metodo_pago: 'efectivo_usd' }) }} className={showForm ? 'btn-secondary' : 'btn-primary'}>
           {showForm ? <><X className="w-4 h-4" /> Cerrar</> : <><Plus className="w-4 h-4" /> Registrar Consulta</>}
         </button>
       </div>
 
-      {/* Formulario de Facturación y Consulta Clínica */}
       {showForm && (
         <form onSubmit={save} className="card-box space-y-4 border-2 border-teal-200 bg-teal-50/20">
           <h3 className="font-bold text-sm text-teal-800 flex items-center gap-1.5">
-            <Receipt className="w-4 h-4" /> Registrar Procedimiento y Cobro
+            <Receipt className="w-4 h-4" /> {editId ? 'Editar Consulta / Cobro' : 'Registrar Procedimiento y Cobro'}
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -168,7 +210,6 @@ export default function Historial() {
             </div>
           </div>
 
-          {/* Odontograma interactivo */}
           <Odontograma selected={dientesSel} onChange={setDientesSel} />
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -198,7 +239,6 @@ export default function Historial() {
             <textarea className="input-field" value={form.diagnostico} onChange={e => setForm({...form, diagnostico: e.target.value})} placeholder="Detalles de la intervención..." rows={2} />
           </div>
 
-          {/* Totales en vivo */}
           <div className="p-3.5 bg-slate-900 text-white rounded-xl text-xs space-y-1">
             <div className="flex justify-between text-slate-400"><span>Subtotal:</span><span>{fmt(subtotalUSD, 'USD')}</span></div>
             {taxPct > 0 && <div className="flex justify-between text-teal-400"><span>Impuesto ({taxPct}%):</span><span>{fmt(taxUSD, 'USD')}</span></div>}
@@ -208,19 +248,17 @@ export default function Historial() {
           </div>
 
           <div className="flex gap-2">
-            <button type="submit" className="btn-primary"><Save className="w-4 h-4" /> Guardar y Emitir Recibo</button>
-            <button type="button" onClick={() => setShowForm(false)} className="btn-secondary">Cancelar</button>
+            <button type="submit" className="btn-primary"><Save className="w-4 h-4" /> {editId ? 'Guardar Cambios' : 'Guardar y Emitir Recibo'}</button>
+            <button type="button" onClick={() => { setShowForm(false); setEditId(null) }} className="btn-secondary">Cancelar</button>
           </div>
         </form>
       )}
 
-      {/* Barra de búsqueda */}
       <div className="relative">
         <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
         <input placeholder="Buscar por paciente, procedimiento o factura..." value={q} onChange={e => setQ(e.target.value)} className="input-field pl-10" />
       </div>
 
-      {/* Lista de Registros Clínicos */}
       <div className="space-y-3">
         {filtered.map(h => (
           <div key={h.id} className="card-box space-y-2.5">
@@ -233,12 +271,29 @@ export default function Historial() {
               </div>
               <div className="text-right">
                 <PriceBox usd={h.monto_usd} showAll />
-                <button
-                  onClick={() => setTicketClinico({ ...h, paciente: h.pacientes })}
-                  className="btn-secondary text-xs py-1 px-2 mt-2 inline-flex items-center gap-1"
-                >
-                  <Printer className="w-3.5 h-3.5" /> Recibo
-                </button>
+                <div className="flex justify-end gap-1 mt-2">
+                  <button
+                    onClick={() => setTicketClinico({ ...h, paciente: h.pacientes })}
+                    className="btn-secondary text-xs py-1 px-2 inline-flex items-center gap-1"
+                    title="Imprimir Recibo"
+                  >
+                    <Printer className="w-3.5 h-3.5" /> Recibo
+                  </button>
+                  <button
+                    onClick={() => startEdit(h)}
+                    className="btn-secondary text-xs py-1 px-2 inline-flex items-center gap-1 text-yellow-600 hover:bg-yellow-50"
+                    title="Editar"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => eliminarConsulta(h.id, h.factura)}
+                    className="btn-secondary text-xs py-1 px-2 inline-flex items-center gap-1 text-red-600 hover:bg-red-50"
+                    title="Anular"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -257,7 +312,6 @@ export default function Historial() {
         ))}
       </div>
 
-      {/* Recibo Clínico Imprimible */}
       {ticketClinico && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl space-y-4 text-center">
