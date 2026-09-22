@@ -63,11 +63,26 @@ export default function Pacientes() {
 
   const save = async e => {
     e.preventDefault()
+    
+    // Sanitización de datos para evitar errores de tipo en PostgreSQL (ej. fechas vacías "")
+    const sanitizedForm = {
+      nombres: form.nombres,
+      apellidos: form.apellidos,
+      cedula: form.cedula || null,
+      telefono: form.telefono || null,
+      email: form.email || null,
+      fecha_nacimiento: form.fecha_nacimiento || null,
+      alergias: form.alergias || null,
+      antecedentes: form.antecedentes || null
+    }
+
     if (editId) {
-      await supabase.from('pacientes').update(form).eq('id', editId)
+      const { error } = await supabase.from('pacientes').update(sanitizedForm).eq('id', editId)
+      if (error) return toast.error('Error al actualizar datos del paciente')
       toast.success('Paciente actualizado')
     } else {
-      await supabase.from('pacientes').insert([form])
+      const { error } = await supabase.from('pacientes').insert([sanitizedForm])
+      if (error) return toast.error('Error al registrar paciente en la base de datos')
       toast.success('Paciente registrado')
     }
     setShowForm(false); setEditId(null); setForm(blank); load()
